@@ -1,0 +1,25 @@
+[
+    {
+        "id": 1,
+        "userId": 1,
+        "items": [
+            {
+                "productId": 2,
+                "name": "Smart Fitness Watch",
+                "price": 299.99,
+                "quantity": 1
+            }
+        ],
+        "total": 299.99,
+        "status": "delivered",
+        "shippingAddress": {
+            "name": "Demo User",
+            "address": "123 Main Street",
+            "city": "San Francisco",
+            "state": "CA",
+            "zip": "94102",
+            "country": "USA"
+        },
+        "createdAt": "2026-01-20T10:30:00.000Z"
+    }
+]

@@ -1,0 +1,16 @@
+[
+    {
+        "id": 1,
+        "name": "Demo User",
+        "email": "demo@shopsmart.com",
+        "password": "demo123",
+        "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+        "id": 2,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "password": "password123",
+        "createdAt": "2026-01-15T00:00:00.000Z"
+    }
+]
