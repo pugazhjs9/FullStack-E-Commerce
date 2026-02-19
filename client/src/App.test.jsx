@@ -12,7 +12,7 @@ describe('App', () => {
         );
 
         render(<App />);
-        const linkElement = screen.getByText(/ShopSmart/i);
-        expect(linkElement).toBeInTheDocument();
+        const linkElements = screen.getAllByText(/ShopSmart/i);
+        expect(linkElements.length).toBeGreaterThan(0);
     });
 });
