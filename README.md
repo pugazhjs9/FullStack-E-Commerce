@@ -55,12 +55,38 @@ e-commerce/
 - Node.js 18+ installed
 - npm or yarn
 
-### Installation
+### Quick Setup & Run (Recommended)
+
+The easiest way to get started is to use the provided `run.sh` script. It will automatically install all dependencies and start both the frontend and backend concurrently.
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd e-commerce
+   cd FullStack-E-Commerce
+   ```
+
+2. **Run the setup script**
+   ```bash
+   # Make the script executable (run once)
+   chmod +x run.sh
+   
+   # Start the application
+   ./run.sh
+   ```
+
+3. **Open your browser** and visit http://localhost:5173 (Backend runs at http://localhost:5001)
+
+---
+
+### Manual Setup
+
+If you prefer to set up and run things manually without the bash script:
+
+#### Installation
+
+1. **Install root dependencies** (for concurrent run)
+   ```bash
+   npm install
    ```
 
 2. **Install backend dependencies**
@@ -75,21 +101,19 @@ e-commerce/
    npm install
    ```
 
-### Running Locally
+#### Running Locally
 
 1. **Start the backend server**
    ```bash
    cd server
    npm run dev
    ```
-   Backend runs at: http://localhost:5001
 
 2. **Start the frontend (in a new terminal)**
    ```bash
    cd client
    npm run dev
    ```
-   Frontend runs at: http://localhost:5173
 
 3. **Open your browser** and visit http://localhost:5173
 
