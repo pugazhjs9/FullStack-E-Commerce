@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+    base: '/FullStack-E-Commerce/', // GitHub repo name — change if yours differs
     plugins: [react()],
+
     server: {
         proxy: {
             '/api': {
