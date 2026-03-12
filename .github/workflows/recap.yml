@@ -26,3 +26,13 @@ jobs:
         uses: actions/checkout@v4
       - name: List Files after checkout
         run: ls -la
+
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fail-logs-${{ github.job }}
+          path: |
+            ~/.npm/_logs/
+            **/*.log
+          retention-days: 7

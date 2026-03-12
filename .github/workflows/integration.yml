@@ -80,3 +80,13 @@ jobs:
           SLACK_MESSAGE: '${{ job.status == ''success'' && ''🟢 CI PASSED'' || ''🔴 CI FAILED'' }} | Node: ${{ matrix.node-version }} | <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>'  
           SLACK_USERNAME: 'GitHub CI'
           SLACK_ICON_EMOJI: ':robot_face:'
+
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fail-logs-${{ github.job }}-node-${{ matrix.node-version }}
+          path: |
+            ~/.npm/_logs/
+            **/*.log
+          retention-days: 7

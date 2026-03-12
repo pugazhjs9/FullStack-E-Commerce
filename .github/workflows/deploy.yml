@@ -39,3 +39,13 @@ jobs:
 
             sudo systemctl restart nginx
           EOF
+
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fail-logs-${{ github.job }}
+          path: |
+            ~/.npm/_logs/
+            **/*.log
+          retention-days: 7
