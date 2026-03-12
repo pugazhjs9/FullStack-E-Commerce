@@ -1,79 +1,93 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
-    branches:
-      - main
-      - master
+  # push:
+  #   branches: ['**']
+  # pull_request:
+  #   branches: ['**']
+  workflow_dispatch:
 
 jobs:
-  build-client:
+  client:
     name: Build Client
     runs-on: ubuntu-latest
-
+    
     defaults:
       run:
         working-directory: ./client
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Show workflow context (client)
+      
+      - name: Say Hello
+        run: echo "👋 Hello GitHub Actions!"
+      
+      - name: Show Context Info
         run: |
-          echo "Repository (context): ${{ github.repository }}"
-          echo "Branch ref (context): ${{ github.ref }}"
-          echo "Commit SHA (env): $GITHUB_SHA"
-          echo "Actor (env): $GITHUB_ACTOR"
-
+          echo "🔹 Repository: ${{ github.repository }}"
+          echo "🔹 Branch: ${{ github.ref_name }}"
+          echo "🔹 Commit: ${{ github.sha }}"
+          echo "🔹 Actor: ${{ github.actor }}"
+          echo "🔹 Event: ${{ github.event_name }}"
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
-          cache-dependency-path: client/package-lock.json
-
+          cache-dependency-path: ./client/package-lock.json
+      
       - name: Install dependencies
-        run: |
-          echo "Installing client dependencies in $(pwd)"
-          npm install
+        run: npm ci
+      
+      - name: Run tests
+        run: npm run test
+      
+      - name: Check formatting
+        run: npm run format -- --check
+      
+      - name: Build client
+        run: npm run build
 
-      - name: Build
-        run: |
-          echo "Running client build"
-          npm run build
-
-  build-server:
+  server:
     name: Build Server
     runs-on: ubuntu-latest
-
+    
     defaults:
       run:
         working-directory: ./server
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Show workflow context (server)
+      
+      - name: Say Hello
+        run: echo "👋 Hello GitHub Actions!"
+      
+      - name: Show Context Info
         run: |
-          echo "Repository (context): ${{ github.repository }}"
-          echo "Branch ref (context): ${{ github.ref }}"
-          echo "Commit SHA (env): $GITHUB_SHA"
-          echo "Actor (env): $GITHUB_ACTOR"
-
+          echo "🔹 Repository: ${{ github.repository }}"
+          echo "🔹 Branch: ${{ github.ref_name }}"
+          echo "🔹 Commit: ${{ github.sha }}"
+          echo "🔹 Actor: ${{ github.actor }}"
+          echo "🔹 Event: ${{ github.event_name }}"
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
-          cache-dependency-path: server/package-lock.json
-
+          cache-dependency-path: ./server/package-lock.json
+      
       - name: Install dependencies
-        run: |
-          echo "Installing server dependencies in $(pwd)"
-          npm install
+        run: npm ci
+      
+      - name: Run tests
+        run: npm run test
+      
+      - name: Check formatting
+        run: npm run format -- --check
+      
+      - name: Verify server setup
+        run: node --version && npm --version
