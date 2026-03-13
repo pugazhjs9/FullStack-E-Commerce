@@ -2,8 +2,8 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-export default defineConfig({
-    base: "/FullStack-E-Commerce/", 
+export default defineConfig(({ command }) => ({
+    base: command === 'build' ? "/FullStack-E-Commerce/" : "/", 
     plugins: [react()],
     server: {
         proxy: {
@@ -20,4 +20,4 @@ export default defineConfig({
         include: ['src/**/*.test.{js,jsx}', 'src/__tests__/**/*.test.{js,jsx}'],
         exclude: ['node_modules', 'tests/e2e/**'],
     },
-})
+}));

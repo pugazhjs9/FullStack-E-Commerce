@@ -9,35 +9,28 @@ const app = require('../../src/app');
  * We swap in a temporary data directory to avoid corrupting dev data.
  */
 
-const TEST_DATA_DIR = path.join(__dirname, '../fixtures/data');
-const DATA_UTILS_PATH = path.join(__dirname, '../../src/utils/dataUtils.js');
+const USERS_FILE = path.join(__dirname, '../../src/data/users.json');
 
 // ─── Setup & Teardown ─────────────────────────────────────────────────────────
 
-// Override the data directory used by dataUtils to point to test fixtures
-const originalDataDir = path.join(__dirname, '../../src/data');
+let originalUsers;
 
 beforeAll(() => {
-    // Create test data dir if needed
-    if (!fs.existsSync(TEST_DATA_DIR)) {
-        fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
+    try {
+        originalUsers = fs.readFileSync(USERS_FILE, 'utf8');
+    } catch (e) {
+        originalUsers = '[]';
     }
 });
 
 beforeEach(() => {
     // Reset test data before each test
-    fs.writeFileSync(path.join(TEST_DATA_DIR, 'users.json'), '[]', 'utf8');
-
-    // Monkey-patch the dataDir inside dataUtils for test isolation
-    // We require and re-point the module's internal path
-    jest.resetModules();
+    fs.writeFileSync(USERS_FILE, '[]', 'utf8');
 });
 
 afterAll(() => {
-    // Clean up test fixtures
-    try {
-        fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true });
-    } catch (e) { /* ignore */ }
+    // Clean up test fixtures: restore original
+    fs.writeFileSync(USERS_FILE, originalUsers, 'utf8');
 });
 
 // ─── Helper ───────────────────────────────────────────────────────────────────

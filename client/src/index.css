@@ -3,6 +3,9 @@
    Premium Design with Glassmorphism & Animations
    ===================================================== */
 
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
 /* CSS Variables & Design Tokens */
 :root {
   /* Colors - Vibrant Premium Palette */
@@ -78,10 +81,6 @@
   --container-max: 1280px;
   --navbar-height: 72px;
 }
-
-/* Google Fonts Import */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
-
 /* Base Reset & Global Styles */
 *, *::before, *::after {
   box-sizing: border-box;
