@@ -24,5 +24,9 @@ module.exports = {
       env: { node: true },
       globals: { global: "readonly" },
     },
+    {
+      files: ["playwright.config.js", "e2e/**/*.js"],
+      env: { node: true },
+    },
   ],
 };
