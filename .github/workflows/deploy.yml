@@ -1,6 +1,8 @@
 name: Deploy to EC2
 
 on:
+  push:
+    branches: [main]  # Auto-deploy on every merge to main
   workflow_dispatch:
 
 jobs:
@@ -20,31 +22,47 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/github_actions ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -i ~/.ssh/github_actions ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            set -e
+            echo "=== Pulling latest code ==="
             cd ~/shopsmart
             git pull origin main
 
-            # Backend
+            echo "=== Updating backend ==="
             cd server
-            npm install
-            pm2 restart shopsmart-backend
+            npm ci --omit=dev
+            pm2 restart shopsmart-backend || pm2 start src/index.js --name shopsmart-backend
 
-            # Frontend
+            echo "=== Updating frontend ==="
             cd ../client
-            npm install
+            npm ci
             npm run build
 
-            sudo rm -rf /var/www/shopsmart/client/dist
-            sudo cp -r dist /var/www/shopsmart/client/
+            echo "=== Syncing build to nginx ==="
+            sudo rsync -a --delete dist/ /var/www/shopsmart/client/dist/
+            sudo systemctl reload nginx
 
-            sudo systemctl restart nginx
-          EOF
+            echo "=== Deploy complete ==="
+          ENDSSH
+
+      - name: Health Check
+        run: |
+          echo "Waiting for server to be ready..."
+          sleep 8
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "http://${{ secrets.EC2_HOST }}:5001/api/health" || echo "000")
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Health check FAILED (HTTP $STATUS)"
+            exit 1
+          fi
+          echo "✅ Health check PASSED"
 
       - name: Upload Logs on Failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fail-logs-${{ github.job }}
+          name: fail-logs-deploy
           path: |
             ~/.npm/_logs/
             **/*.log
