@@ -57,7 +57,7 @@ jobs:
       # CLIENT
       - name: Install Client Dependencies
         working-directory: ./client
-        run: npm install
+        run: rm -rf node_modules package-lock.json && npm install
 
       - name: Rebuild Client native bindings
         working-directory: ./client
