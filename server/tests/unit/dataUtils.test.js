@@ -1,5 +1,4 @@
 const fs = require('fs');
-const path = require('path');
 
 // Mock the fs module before requiring dataUtils
 jest.mock('fs');
