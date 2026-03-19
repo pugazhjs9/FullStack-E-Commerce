@@ -3,9 +3,9 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "========================================="
+echo "========================================"
 echo "   FullStack E-Commerce Setup & Run      "
-echo "========================================="
+echo "========================================"
 
 echo -e "\n📦 [1/3] Installing root dependencies..."
 npm install
