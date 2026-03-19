@@ -22,37 +22,41 @@ const mockOrders = [
         total: 999.99,
         status: 'pending',
         shippingAddress: { name: 'Alice', address: '123 Main St', city: 'NYC', zip: '10001' },
-        createdAt: '2024-02-01T00:00:00.000Z'
+        createdAt: '2024-02-01T00:00:00.000Z',
     },
     {
         id: 2,
-        userId: 2,  // Different user
+        userId: 2, // Different user
         items: [],
         total: 0,
         status: 'shipped',
         shippingAddress: {},
-        createdAt: '2024-01-01T00:00:00.000Z'
-    }
+        createdAt: '2024-01-01T00:00:00.000Z',
+    },
 ];
 
 const mockCartWithItems = [
     {
         userId: 1,
         items: [{ productId: 1, quantity: 2 }],
-        updatedAt: '2024-01-01T00:00:00.000Z'
-    }
+        updatedAt: '2024-01-01T00:00:00.000Z',
+    },
 ];
 
 const mockEmptyCart = [
     {
         userId: 1,
         items: [],
-        updatedAt: '2024-01-01T00:00:00.000Z'
-    }
+        updatedAt: '2024-01-01T00:00:00.000Z',
+    },
 ];
 
-const setupReadData = ({ orders = mockOrders, carts = mockCartWithItems, products = mockProducts } = {}) => {
-    readData.mockImplementation((filename) => {
+const setupReadData = ({
+    orders = mockOrders,
+    carts = mockCartWithItems,
+    products = mockProducts,
+} = {}) => {
+    readData.mockImplementation(filename => {
         if (filename === 'orders.json') return JSON.parse(JSON.stringify(orders));
         if (filename === 'carts.json') return JSON.parse(JSON.stringify(carts));
         if (filename === 'products.json') return [...products];
@@ -75,11 +79,9 @@ describe('GET /api/orders', () => {
         expect(res.statusCode).toBe(401);
     });
 
-    it('should return only the authenticated user\'s orders', async () => {
+    it("should return only the authenticated user's orders", async () => {
         setupReadData();
-        const res = await request(app)
-            .get('/api/orders')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).get('/api/orders').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
         expect(res.body).toHaveLength(1);
@@ -92,9 +94,7 @@ describe('GET /api/orders', () => {
             { ...mockOrders[0], id: 3, createdAt: '2024-03-01T00:00:00.000Z', userId: 1 },
         ];
         setupReadData({ orders: multipleOrders });
-        const res = await request(app)
-            .get('/api/orders')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).get('/api/orders').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
         // Most recent order should appear first
@@ -115,25 +115,21 @@ describe('GET /api/orders/:id', () => {
 
     it('should return 404 for unknown order id', async () => {
         setupReadData();
-        const res = await request(app)
-            .get('/api/orders/999')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).get('/api/orders/999').set('Authorization', AUTH_HEADER);
         expect(res.statusCode).toBe(404);
     });
 
     it('should return 404 when order belongs to another user', async () => {
         setupReadData();
         const res = await request(app)
-            .get('/api/orders/2')   // Order belongs to userId 2
-            .set('Authorization', AUTH_HEADER);  // But we're user 1
+            .get('/api/orders/2') // Order belongs to userId 2
+            .set('Authorization', AUTH_HEADER); // But we're user 1
         expect(res.statusCode).toBe(404);
     });
 
     it('should return the order for valid id and owner', async () => {
         setupReadData();
-        const res = await request(app)
-            .get('/api/orders/1')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).get('/api/orders/1').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
         expect(res.body.id).toBe(1);
@@ -149,8 +145,8 @@ describe('POST /api/orders', () => {
             name: 'Alice',
             address: '123 Main St',
             city: 'New York',
-            zip: '10001'
-        }
+            zip: '10001',
+        },
     };
 
     it('should return 401 when not authenticated', async () => {
@@ -235,18 +231,14 @@ describe('PUT /api/orders/:id/status', () => {
 
     it('should return 404 for unknown order id', async () => {
         setupReadData();
-        const res = await request(app)
-            .put('/api/orders/999/status')
-            .send({ status: 'shipped' });
+        const res = await request(app).put('/api/orders/999/status').send({ status: 'shipped' });
 
         expect(res.statusCode).toBe(404);
     });
 
     it('should update status successfully for valid order and status', async () => {
         setupReadData();
-        const res = await request(app)
-            .put('/api/orders/1/status')
-            .send({ status: 'shipped' });
+        const res = await request(app).put('/api/orders/1/status').send({ status: 'shipped' });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.order.status).toBe('shipped');
@@ -258,9 +250,7 @@ describe('PUT /api/orders/:id/status', () => {
 
         for (const status of validStatuses) {
             setupReadData();
-            const res = await request(app)
-                .put('/api/orders/1/status')
-                .send({ status });
+            const res = await request(app).put('/api/orders/1/status').send({ status });
             expect(res.statusCode).toBe(200);
         }
     });

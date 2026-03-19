@@ -12,8 +12,30 @@ const app = require('../../src/app');
 const DATA_DIR = path.join(__dirname, '../../src/data');
 
 const SAMPLE_PRODUCTS = [
-    { id: 1, name: 'Laptop', description: 'A great laptop', price: 999.99, category: 'Electronics', image: 'https://example.com/img.jpg', rating: 4.5, reviews: 100, stock: 10, featured: true },
-    { id: 2, name: 'T-Shirt', description: 'Comfortable shirt', price: 19.99, category: 'Clothing', image: 'https://example.com/img2.jpg', rating: 3.8, reviews: 30, stock: 50, featured: false },
+    {
+        id: 1,
+        name: 'Laptop',
+        description: 'A great laptop',
+        price: 999.99,
+        category: 'Electronics',
+        image: 'https://example.com/img.jpg',
+        rating: 4.5,
+        reviews: 100,
+        stock: 10,
+        featured: true,
+    },
+    {
+        id: 2,
+        name: 'T-Shirt',
+        description: 'Comfortable shirt',
+        price: 19.99,
+        category: 'Clothing',
+        image: 'https://example.com/img2.jpg',
+        rating: 3.8,
+        reviews: 30,
+        stock: 50,
+        featured: false,
+    },
 ];
 
 // ─── Backup & Restore ─────────────────────────────────────────────────────────
@@ -21,15 +43,31 @@ const SAMPLE_PRODUCTS = [
 let originalUsers, originalCarts, originalProducts;
 
 beforeAll(() => {
-    try { originalUsers = fs.readFileSync(path.join(DATA_DIR, 'users.json'), 'utf8'); } catch { originalUsers = '[]'; }
-    try { originalCarts = fs.readFileSync(path.join(DATA_DIR, 'carts.json'), 'utf8'); } catch { originalCarts = '[]'; }
-    try { originalProducts = fs.readFileSync(path.join(DATA_DIR, 'products.json'), 'utf8'); } catch { originalProducts = '[]'; }
+    try {
+        originalUsers = fs.readFileSync(path.join(DATA_DIR, 'users.json'), 'utf8');
+    } catch {
+        originalUsers = '[]';
+    }
+    try {
+        originalCarts = fs.readFileSync(path.join(DATA_DIR, 'carts.json'), 'utf8');
+    } catch {
+        originalCarts = '[]';
+    }
+    try {
+        originalProducts = fs.readFileSync(path.join(DATA_DIR, 'products.json'), 'utf8');
+    } catch {
+        originalProducts = '[]';
+    }
 });
 
 beforeEach(() => {
     fs.writeFileSync(path.join(DATA_DIR, 'users.json'), '[]', 'utf8');
     fs.writeFileSync(path.join(DATA_DIR, 'carts.json'), '[]', 'utf8');
-    fs.writeFileSync(path.join(DATA_DIR, 'products.json'), JSON.stringify(SAMPLE_PRODUCTS, null, 2), 'utf8');
+    fs.writeFileSync(
+        path.join(DATA_DIR, 'products.json'),
+        JSON.stringify(SAMPLE_PRODUCTS, null, 2),
+        'utf8'
+    );
 });
 
 afterAll(() => {
@@ -57,9 +95,7 @@ describe('GET /api/cart (integration)', () => {
 
     it('should return empty cart for a new user', async () => {
         const authHeader = await registerAndLogin();
-        const res = await request(app)
-            .get('/api/cart')
-            .set('Authorization', authHeader);
+        const res = await request(app).get('/api/cart').set('Authorization', authHeader);
 
         expect(res.statusCode).toBe(200);
         expect(res.body.items).toHaveLength(0);
@@ -98,9 +134,7 @@ describe('POST /api/cart (integration)', () => {
             .set('Authorization', authHeader)
             .send({ productId: 1, quantity: 2 });
 
-        const cartRes = await request(app)
-            .get('/api/cart')
-            .set('Authorization', authHeader);
+        const cartRes = await request(app).get('/api/cart').set('Authorization', authHeader);
 
         const item = cartRes.body.items.find(i => i.productId === 1);
         expect(item.quantity).toBe(3);
@@ -138,9 +172,7 @@ describe('PUT /api/cart/:productId (integration)', () => {
 
         expect(res.statusCode).toBe(200);
 
-        const cartRes = await request(app)
-            .get('/api/cart')
-            .set('Authorization', authHeader);
+        const cartRes = await request(app).get('/api/cart').set('Authorization', authHeader);
         expect(cartRes.body.items[0].quantity).toBe(5);
     });
 
@@ -157,9 +189,7 @@ describe('PUT /api/cart/:productId (integration)', () => {
             .set('Authorization', authHeader)
             .send({ quantity: 0 });
 
-        const cartRes = await request(app)
-            .get('/api/cart')
-            .set('Authorization', authHeader);
+        const cartRes = await request(app).get('/api/cart').set('Authorization', authHeader);
         expect(cartRes.body.items).toHaveLength(0);
     });
 });
@@ -180,15 +210,11 @@ describe('DELETE /api/cart/:productId (integration)', () => {
             .set('Authorization', authHeader)
             .send({ productId: 2, quantity: 1 });
 
-        const removeRes = await request(app)
-            .delete('/api/cart/1')
-            .set('Authorization', authHeader);
+        const removeRes = await request(app).delete('/api/cart/1').set('Authorization', authHeader);
 
         expect(removeRes.statusCode).toBe(200);
 
-        const cartRes = await request(app)
-            .get('/api/cart')
-            .set('Authorization', authHeader);
+        const cartRes = await request(app).get('/api/cart').set('Authorization', authHeader);
 
         expect(cartRes.body.items).toHaveLength(1);
         expect(cartRes.body.items[0].productId).toBe(2);
@@ -212,15 +238,11 @@ describe('DELETE /api/cart (clear, integration)', () => {
             .set('Authorization', authHeader)
             .send({ productId: 2, quantity: 2 });
 
-        const clearRes = await request(app)
-            .delete('/api/cart')
-            .set('Authorization', authHeader);
+        const clearRes = await request(app).delete('/api/cart').set('Authorization', authHeader);
 
         expect(clearRes.statusCode).toBe(200);
 
-        const cartRes = await request(app)
-            .get('/api/cart')
-            .set('Authorization', authHeader);
+        const cartRes = await request(app).get('/api/cart').set('Authorization', authHeader);
 
         expect(cartRes.body.items).toHaveLength(0);
         expect(cartRes.body.subtotal).toBe(0);

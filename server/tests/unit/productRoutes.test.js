@@ -8,9 +8,39 @@ const app = require('../../src/app');
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
 const mockProducts = [
-    { id: 1, name: 'Laptop', description: 'A great laptop', price: 999.99, category: 'Electronics', stock: 10, rating: 4.5, reviews: 100, featured: true },
-    { id: 2, name: 'T-Shirt', description: 'Comfortable shirt', price: 19.99, category: 'Clothing', stock: 50, rating: 3.8, reviews: 30, featured: false },
-    { id: 3, name: 'Headphones', description: 'Noise cancelling', price: 199.99, category: 'Electronics', stock: 0, rating: 4.9, reviews: 500, featured: false },
+    {
+        id: 1,
+        name: 'Laptop',
+        description: 'A great laptop',
+        price: 999.99,
+        category: 'Electronics',
+        stock: 10,
+        rating: 4.5,
+        reviews: 100,
+        featured: true,
+    },
+    {
+        id: 2,
+        name: 'T-Shirt',
+        description: 'Comfortable shirt',
+        price: 19.99,
+        category: 'Clothing',
+        stock: 50,
+        rating: 3.8,
+        reviews: 30,
+        featured: false,
+    },
+    {
+        id: 3,
+        name: 'Headphones',
+        description: 'Noise cancelling',
+        price: 199.99,
+        category: 'Electronics',
+        stock: 0,
+        rating: 4.9,
+        reviews: 500,
+        featured: false,
+    },
 ];
 
 beforeEach(() => {
@@ -94,7 +124,9 @@ describe('GET /api/products', () => {
     });
 
     it('should return 500 when readData throws', async () => {
-        readData.mockImplementation(() => { throw new Error('IO error'); });
+        readData.mockImplementation(() => {
+            throw new Error('IO error');
+        });
         const res = await request(app).get('/api/products');
         expect(res.statusCode).toBe(500);
     });
@@ -137,9 +169,7 @@ describe('GET /api/products/:id', () => {
 
 describe('POST /api/products', () => {
     it('should return 400 when name is missing', async () => {
-        const res = await request(app)
-            .post('/api/products')
-            .send({ price: 10, category: 'Test' });
+        const res = await request(app).post('/api/products').send({ price: 10, category: 'Test' });
         expect(res.statusCode).toBe(400);
     });
 
@@ -151,9 +181,7 @@ describe('POST /api/products', () => {
     });
 
     it('should return 400 when category is missing', async () => {
-        const res = await request(app)
-            .post('/api/products')
-            .send({ name: 'Test', price: 10 });
+        const res = await request(app).post('/api/products').send({ name: 'Test', price: 10 });
         expect(res.statusCode).toBe(400);
     });
 
@@ -174,9 +202,7 @@ describe('POST /api/products', () => {
 
 describe('PUT /api/products/:id', () => {
     it('should return 404 for unknown id', async () => {
-        const res = await request(app)
-            .put('/api/products/999')
-            .send({ name: 'Updated' });
+        const res = await request(app).put('/api/products/999').send({ name: 'Updated' });
         expect(res.statusCode).toBe(404);
     });
 

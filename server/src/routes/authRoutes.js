@@ -25,7 +25,7 @@ router.post('/register', (req, res) => {
             name,
             email: email.toLowerCase(),
             password, // In production, this should be hashed
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
 
         users.push(newUser);
@@ -36,7 +36,7 @@ router.post('/register', (req, res) => {
         res.status(201).json({
             message: 'Registration successful',
             user: userWithoutPassword,
-            token: `token_${newUser.id}_${Date.now()}` // Simple token for demo
+            token: `token_${newUser.id}_${Date.now()}`, // Simple token for demo
         });
     } catch (error) {
         res.status(500).json({ error: 'Registration failed' });
@@ -66,7 +66,7 @@ router.post('/login', (req, res) => {
         res.json({
             message: 'Login successful',
             user: userWithoutPassword,
-            token: `token_${user.id}_${Date.now()}` // Simple token for demo
+            token: `token_${user.id}_${Date.now()}`, // Simple token for demo
         });
     } catch (error) {
         res.status(500).json({ error: 'Login failed' });

@@ -14,8 +14,8 @@ const mockUsers = [
         name: 'Alice',
         email: 'alice@example.com',
         password: 'password123',
-        createdAt: '2024-01-01T00:00:00.000Z'
-    }
+        createdAt: '2024-01-01T00:00:00.000Z',
+    },
 ];
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
@@ -85,7 +85,9 @@ describe('POST /api/auth/register', () => {
     });
 
     it('should return 500 when readData throws', async () => {
-        readData.mockImplementation(() => { throw new Error('disk error'); });
+        readData.mockImplementation(() => {
+            throw new Error('disk error');
+        });
 
         const res = await request(app)
             .post('/api/auth/register')
@@ -104,17 +106,13 @@ describe('POST /api/auth/login', () => {
     });
 
     it('should return 400 when email is missing', async () => {
-        const res = await request(app)
-            .post('/api/auth/login')
-            .send({ password: 'password123' });
+        const res = await request(app).post('/api/auth/login').send({ password: 'password123' });
 
         expect(res.statusCode).toBe(400);
     });
 
     it('should return 400 when password is missing', async () => {
-        const res = await request(app)
-            .post('/api/auth/login')
-            .send({ email: 'alice@example.com' });
+        const res = await request(app).post('/api/auth/login').send({ email: 'alice@example.com' });
 
         expect(res.statusCode).toBe(400);
     });
@@ -172,9 +170,7 @@ describe('GET /api/auth/me', () => {
     });
 
     it('should return 401 when token format is malformed', async () => {
-        const res = await request(app)
-            .get('/api/auth/me')
-            .set('Authorization', 'Bearer badtoken');
+        const res = await request(app).get('/api/auth/me').set('Authorization', 'Bearer badtoken');
 
         expect(res.statusCode).toBe(401);
     });

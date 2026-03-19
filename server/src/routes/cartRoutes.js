@@ -6,7 +6,7 @@ const CARTS_FILE = 'carts.json';
 const PRODUCTS_FILE = 'products.json';
 
 // Helper to get user ID from token
-const getUserIdFromToken = (req) => {
+const getUserIdFromToken = req => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return null;
@@ -34,24 +34,26 @@ router.get('/', (req, res) => {
         }
 
         // Enrich cart items with product details
-        const enrichedItems = cart.items.map(item => {
-            const product = products.find(p => p.id === item.productId);
-            return {
-                ...item,
-                product: product || null
-            };
-        }).filter(item => item.product !== null);
+        const enrichedItems = cart.items
+            .map(item => {
+                const product = products.find(p => p.id === item.productId);
+                return {
+                    ...item,
+                    product: product || null,
+                };
+            })
+            .filter(item => item.product !== null);
 
         // Calculate totals
         const subtotal = enrichedItems.reduce(
-            (sum, item) => sum + (item.product.price * item.quantity),
+            (sum, item) => sum + item.product.price * item.quantity,
             0
         );
 
         res.json({
             items: enrichedItems,
             itemCount: enrichedItems.reduce((sum, item) => sum + item.quantity, 0),
-            subtotal: Math.round(subtotal * 100) / 100
+            subtotal: Math.round(subtotal * 100) / 100,
         });
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch cart' });
@@ -87,7 +89,7 @@ router.post('/', (req, res) => {
             carts.push({
                 userId,
                 items: [],
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
             });
             cartIndex = carts.length - 1;
         }
@@ -104,7 +106,7 @@ router.post('/', (req, res) => {
             // Add new item
             carts[cartIndex].items.push({
                 productId: parseInt(productId),
-                quantity: parseInt(quantity)
+                quantity: parseInt(quantity),
             });
         }
 
@@ -139,9 +141,7 @@ router.put('/:productId', (req, res) => {
             return res.status(404).json({ error: 'Cart not found' });
         }
 
-        const itemIndex = carts[cartIndex].items.findIndex(
-            item => item.productId === productId
-        );
+        const itemIndex = carts[cartIndex].items.findIndex(item => item.productId === productId);
 
         if (itemIndex === -1) {
             return res.status(404).json({ error: 'Item not found in cart' });
@@ -179,9 +179,7 @@ router.delete('/:productId', (req, res) => {
             return res.status(404).json({ error: 'Cart not found' });
         }
 
-        const itemIndex = carts[cartIndex].items.findIndex(
-            item => item.productId === productId
-        );
+        const itemIndex = carts[cartIndex].items.findIndex(item => item.productId === productId);
 
         if (itemIndex === -1) {
             return res.status(404).json({ error: 'Item not found in cart' });

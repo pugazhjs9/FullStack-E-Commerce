@@ -7,7 +7,7 @@ const CARTS_FILE = 'carts.json';
 const PRODUCTS_FILE = 'products.json';
 
 // Helper to get user ID from token
-const getUserIdFromToken = (req) => {
+const getUserIdFromToken = req => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return null;
@@ -45,9 +45,7 @@ router.get('/:id', (req, res) => {
         }
 
         const orders = readData(ORDERS_FILE);
-        const order = orders.find(
-            o => o.id === parseInt(req.params.id) && o.userId === userId
-        );
+        const order = orders.find(o => o.id === parseInt(req.params.id) && o.userId === userId);
 
         if (!order) {
             return res.status(404).json({ error: 'Order not found' });
@@ -69,8 +67,13 @@ router.post('/', (req, res) => {
 
         const { shippingAddress } = req.body;
 
-        if (!shippingAddress || !shippingAddress.name || !shippingAddress.address ||
-            !shippingAddress.city || !shippingAddress.zip) {
+        if (
+            !shippingAddress ||
+            !shippingAddress.name ||
+            !shippingAddress.address ||
+            !shippingAddress.city ||
+            !shippingAddress.zip
+        ) {
             return res.status(400).json({ error: 'Complete shipping address is required' });
         }
 
@@ -91,15 +94,12 @@ router.post('/', (req, res) => {
                 name: product ? product.name : 'Unknown Product',
                 price: product ? product.price : 0,
                 image: product ? product.image : '',
-                quantity: item.quantity
+                quantity: item.quantity,
             };
         });
 
         // Calculate total
-        const total = orderItems.reduce(
-            (sum, item) => sum + (item.price * item.quantity),
-            0
-        );
+        const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
         // Create order
         const orders = readData(ORDERS_FILE);
@@ -110,7 +110,7 @@ router.post('/', (req, res) => {
             total: Math.round(total * 100) / 100,
             status: 'pending',
             shippingAddress,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
 
         orders.push(newOrder);
@@ -126,7 +126,7 @@ router.post('/', (req, res) => {
 
         res.status(201).json({
             message: 'Order placed successfully',
-            order: newOrder
+            order: newOrder,
         });
     } catch (error) {
         res.status(500).json({ error: 'Failed to create order' });
@@ -141,7 +141,7 @@ router.put('/:id/status', (req, res) => {
 
         if (!status || !validStatuses.includes(status)) {
             return res.status(400).json({
-                error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+                error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
             });
         }
 

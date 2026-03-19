@@ -10,23 +10,43 @@ const app = require('../../src/app');
 const AUTH_HEADER = 'Bearer token_1_12345';
 
 const mockProducts = [
-    { id: 1, name: 'Laptop', price: 999.99, category: 'Electronics', stock: 10, image: 'img.jpg', rating: 4.5, reviews: 10, featured: false },
-    { id: 2, name: 'T-Shirt', price: 19.99, category: 'Clothing', stock: 5, image: 'img2.jpg', rating: 3.8, reviews: 5, featured: false },
+    {
+        id: 1,
+        name: 'Laptop',
+        price: 999.99,
+        category: 'Electronics',
+        stock: 10,
+        image: 'img.jpg',
+        rating: 4.5,
+        reviews: 10,
+        featured: false,
+    },
+    {
+        id: 2,
+        name: 'T-Shirt',
+        price: 19.99,
+        category: 'Clothing',
+        stock: 5,
+        image: 'img2.jpg',
+        rating: 3.8,
+        reviews: 5,
+        featured: false,
+    },
 ];
 
 const mockCarts = [
     {
         userId: 1,
         items: [{ productId: 1, quantity: 2 }],
-        updatedAt: '2024-01-01T00:00:00.000Z'
-    }
+        updatedAt: '2024-01-01T00:00:00.000Z',
+    },
 ];
 
 const emptyCarts = [];
 
 // Make readData return different data based on filename
 const setupReadData = (carts = mockCarts) => {
-    readData.mockImplementation((filename) => {
+    readData.mockImplementation(filename => {
         if (filename === 'carts.json') return JSON.parse(JSON.stringify(carts));
         if (filename === 'products.json') return [...mockProducts];
         return [];
@@ -49,9 +69,7 @@ describe('GET /api/cart', () => {
 
     it('should return cart with enriched items and totals', async () => {
         setupReadData();
-        const res = await request(app)
-            .get('/api/cart')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).get('/api/cart').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
         expect(res.body).toHaveProperty('items');
@@ -63,9 +81,7 @@ describe('GET /api/cart', () => {
 
     it('should return empty cart when user has no cart', async () => {
         setupReadData(emptyCarts);
-        const res = await request(app)
-            .get('/api/cart')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).get('/api/cart').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
         expect(res.body.items).toHaveLength(0);
@@ -75,9 +91,7 @@ describe('GET /api/cart', () => {
 
     it('should calculate correct subtotal', async () => {
         setupReadData();
-        const res = await request(app)
-            .get('/api/cart')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).get('/api/cart').set('Authorization', AUTH_HEADER);
 
         // 2 * 999.99 = 1999.98
         expect(res.body.subtotal).toBe(1999.98);
@@ -90,19 +104,14 @@ describe('GET /api/cart', () => {
 describe('POST /api/cart', () => {
     it('should return 401 when not authenticated', async () => {
         setupReadData();
-        const res = await request(app)
-            .post('/api/cart')
-            .send({ productId: 1 });
+        const res = await request(app).post('/api/cart').send({ productId: 1 });
 
         expect(res.statusCode).toBe(401);
     });
 
     it('should return 400 when productId is missing', async () => {
         setupReadData();
-        const res = await request(app)
-            .post('/api/cart')
-            .set('Authorization', AUTH_HEADER)
-            .send({});
+        const res = await request(app).post('/api/cart').set('Authorization', AUTH_HEADER).send({});
 
         expect(res.statusCode).toBe(400);
         expect(res.body.error).toMatch(/product id/i);
@@ -160,9 +169,7 @@ describe('POST /api/cart', () => {
 describe('PUT /api/cart/:productId', () => {
     it('should return 401 when not authenticated', async () => {
         setupReadData();
-        const res = await request(app)
-            .put('/api/cart/1')
-            .send({ quantity: 3 });
+        const res = await request(app).put('/api/cart/1').send({ quantity: 3 });
         expect(res.statusCode).toBe(401);
     });
 
@@ -222,17 +229,13 @@ describe('DELETE /api/cart/:productId', () => {
 
     it('should return 404 when item not in cart', async () => {
         setupReadData();
-        const res = await request(app)
-            .delete('/api/cart/99')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).delete('/api/cart/99').set('Authorization', AUTH_HEADER);
         expect(res.statusCode).toBe(404);
     });
 
     it('should remove the item from cart', async () => {
         setupReadData();
-        const res = await request(app)
-            .delete('/api/cart/1')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).delete('/api/cart/1').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
         const savedCarts = writeData.mock.calls[0][1];
@@ -251,9 +254,7 @@ describe('DELETE /api/cart (clear)', () => {
 
     it('should clear all items from the cart', async () => {
         setupReadData();
-        const res = await request(app)
-            .delete('/api/cart')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).delete('/api/cart').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
         expect(res.body.message).toMatch(/cleared/i);
@@ -263,9 +264,7 @@ describe('DELETE /api/cart (clear)', () => {
 
     it('should succeed even when user has no cart', async () => {
         setupReadData(emptyCarts);
-        const res = await request(app)
-            .delete('/api/cart')
-            .set('Authorization', AUTH_HEADER);
+        const res = await request(app).delete('/api/cart').set('Authorization', AUTH_HEADER);
 
         expect(res.statusCode).toBe(200);
     });

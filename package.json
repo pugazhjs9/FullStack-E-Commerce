@@ -1,23 +1,23 @@
 {
-    "name": "fullstack-e-commerce",
-    "version": "1.0.0",
-    "description": "FullStack E-Commerce - ShopSmart",
-    "private": true,
-    "scripts": {
-        "dev:server": "cd server && npm run dev",
-        "dev:client": "cd client && npm run dev",
-        "test:server": "cd server && npm test",
-        "test:server:unit": "cd server && npm run test:unit",
-        "test:server:integration": "cd server && npm run test:integration",
-        "test:server:coverage": "cd server && npm run test:coverage",
-        "test:client": "cd client && npm test -- --run",
-        "test:client:coverage": "cd client && npm test -- --run --coverage",
-        "test:e2e": "npx playwright test",
-        "test:e2e:headed": "npx playwright test --headed",
-        "test:e2e:report": "npx playwright show-report",
-        "test:all": "npm run test:server && npm run test:client"
-    },
-    "devDependencies": {
-        "@playwright/test": "^1.52.0"
-    }
+  "name": "fullstack-e-commerce",
+  "version": "1.0.0",
+  "description": "FullStack E-Commerce - ShopSmart",
+  "private": true,
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "test:server": "cd server && npm test",
+    "test:server:unit": "cd server && npm run test:unit",
+    "test:server:integration": "cd server && npm run test:integration",
+    "test:server:coverage": "cd server && npm run test:coverage",
+    "test:client": "cd client && npm test -- --run",
+    "test:client:coverage": "cd client && npm test -- --run --coverage",
+    "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:report": "npx playwright show-report",
+    "test:all": "npm run test:server && npm run test:client"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
 }

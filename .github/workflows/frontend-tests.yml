@@ -18,37 +18,37 @@ jobs:
         working-directory: ./client
 
     steps:
-      # Setup 
+      # Setup
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          cache: 'npm'
+          node-version: "20.x"
+          cache: "npm"
           cache-dependency-path: client/package-lock.json
 
-      # Install 
+      # Install
       - name: Install Dependencies
         run: npm ci
 
-      # Code Quality 
+      # Code Quality
       - name: Lint
         run: npm run lint
 
       - name: Format Check
         run: npm run format:check
 
-      # Unit & Integration Tests (Vitest) 
+      # Unit & Integration Tests (Vitest)
       - name: Run Tests (Vitest)
         run: npm test
 
-      # Build 
+      # Build
       - name: Build
         run: npm run build
 
-      # E2E Tests (Playwright) 
+      # E2E Tests (Playwright)
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 

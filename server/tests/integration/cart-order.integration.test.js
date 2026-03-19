@@ -19,17 +19,37 @@ const SAMPLE_PRODUCTS = [
 let originalUsers, originalCarts, originalProducts, originalOrders;
 
 beforeAll(() => {
-    try { originalUsers = fs.readFileSync(path.join(DATA_DIR, 'users.json'), 'utf8'); } catch { originalUsers = '[]'; }
-    try { originalCarts = fs.readFileSync(path.join(DATA_DIR, 'carts.json'), 'utf8'); } catch { originalCarts = '[]'; }
-    try { originalProducts = fs.readFileSync(path.join(DATA_DIR, 'products.json'), 'utf8'); } catch { originalProducts = '[]'; }
-    try { originalOrders = fs.readFileSync(path.join(DATA_DIR, 'orders.json'), 'utf8'); } catch { originalOrders = '[]'; }
+    try {
+        originalUsers = fs.readFileSync(path.join(DATA_DIR, 'users.json'), 'utf8');
+    } catch {
+        originalUsers = '[]';
+    }
+    try {
+        originalCarts = fs.readFileSync(path.join(DATA_DIR, 'carts.json'), 'utf8');
+    } catch {
+        originalCarts = '[]';
+    }
+    try {
+        originalProducts = fs.readFileSync(path.join(DATA_DIR, 'products.json'), 'utf8');
+    } catch {
+        originalProducts = '[]';
+    }
+    try {
+        originalOrders = fs.readFileSync(path.join(DATA_DIR, 'orders.json'), 'utf8');
+    } catch {
+        originalOrders = '[]';
+    }
 });
 
 beforeEach(() => {
     fs.writeFileSync(path.join(DATA_DIR, 'users.json'), '[]', 'utf8');
     fs.writeFileSync(path.join(DATA_DIR, 'carts.json'), '[]', 'utf8');
     fs.writeFileSync(path.join(DATA_DIR, 'orders.json'), '[]', 'utf8');
-    fs.writeFileSync(path.join(DATA_DIR, 'products.json'), JSON.stringify(SAMPLE_PRODUCTS, null, 2), 'utf8');
+    fs.writeFileSync(
+        path.join(DATA_DIR, 'products.json'),
+        JSON.stringify(SAMPLE_PRODUCTS, null, 2),
+        'utf8'
+    );
 });
 
 afterAll(() => {
@@ -44,13 +64,23 @@ describe('Cart to Order Flow (integration)', () => {
         // 1. Register a user
         const regRes = await request(app)
             .post('/api/auth/register')
-            .send({ name: 'CartOrder Test', email: `test_${Date.now()}@test.com`, password: 'password123' });
-        
+            .send({
+                name: 'CartOrder Test',
+                email: `test_${Date.now()}@test.com`,
+                password: 'password123',
+            });
+
         const authHeader = `Bearer ${regRes.body.token}`;
 
         // 2. Add two different items to cart
-        await request(app).post('/api/cart').set('Authorization', authHeader).send({ productId: 1, quantity: 1 });
-        await request(app).post('/api/cart').set('Authorization', authHeader).send({ productId: 2, quantity: 2 });
+        await request(app)
+            .post('/api/cart')
+            .set('Authorization', authHeader)
+            .send({ productId: 1, quantity: 1 });
+        await request(app)
+            .post('/api/cart')
+            .set('Authorization', authHeader)
+            .send({ productId: 2, quantity: 2 });
 
         // 3. Verify cart has items and correct subtotal (1000*1 + 50*2 = 1100)
         const cartRes = await request(app).get('/api/cart').set('Authorization', authHeader);
@@ -58,7 +88,12 @@ describe('Cart to Order Flow (integration)', () => {
         expect(cartRes.body.subtotal).toBe(1100);
 
         // 4. Place an order
-        const shippingAddress = { name: 'Test', address: '123 St', city: 'Testville', zip: '12345' };
+        const shippingAddress = {
+            name: 'Test',
+            address: '123 St',
+            city: 'Testville',
+            zip: '12345',
+        };
         const orderRes = await request(app)
             .post('/api/orders')
             .set('Authorization', authHeader)

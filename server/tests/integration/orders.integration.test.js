@@ -11,23 +11,54 @@ const app = require('../../src/app');
 const DATA_DIR = path.join(__dirname, '../../src/data');
 
 const SAMPLE_PRODUCTS = [
-    { id: 1, name: 'Laptop', description: 'A great laptop', price: 999.99, category: 'Electronics', image: 'https://example.com/img.jpg', rating: 4.5, reviews: 100, stock: 10, featured: true },
+    {
+        id: 1,
+        name: 'Laptop',
+        description: 'A great laptop',
+        price: 999.99,
+        category: 'Electronics',
+        image: 'https://example.com/img.jpg',
+        rating: 4.5,
+        reviews: 100,
+        stock: 10,
+        featured: true,
+    },
 ];
 
 let originalUsers, originalCarts, originalProducts, originalOrders;
 
 beforeAll(() => {
-    try { originalUsers = fs.readFileSync(path.join(DATA_DIR, 'users.json'), 'utf8'); } catch { originalUsers = '[]'; }
-    try { originalCarts = fs.readFileSync(path.join(DATA_DIR, 'carts.json'), 'utf8'); } catch { originalCarts = '[]'; }
-    try { originalProducts = fs.readFileSync(path.join(DATA_DIR, 'products.json'), 'utf8'); } catch { originalProducts = '[]'; }
-    try { originalOrders = fs.readFileSync(path.join(DATA_DIR, 'orders.json'), 'utf8'); } catch { originalOrders = '[]'; }
+    try {
+        originalUsers = fs.readFileSync(path.join(DATA_DIR, 'users.json'), 'utf8');
+    } catch {
+        originalUsers = '[]';
+    }
+    try {
+        originalCarts = fs.readFileSync(path.join(DATA_DIR, 'carts.json'), 'utf8');
+    } catch {
+        originalCarts = '[]';
+    }
+    try {
+        originalProducts = fs.readFileSync(path.join(DATA_DIR, 'products.json'), 'utf8');
+    } catch {
+        originalProducts = '[]';
+    }
+    try {
+        originalOrders = fs.readFileSync(path.join(DATA_DIR, 'orders.json'), 'utf8');
+    } catch {
+        originalOrders = '[]';
+    }
 });
 
 beforeEach(() => {
     fs.writeFileSync(path.join(DATA_DIR, 'users.json'), '[]', 'utf8');
     fs.writeFileSync(path.join(DATA_DIR, 'carts.json'), '[]', 'utf8');
     fs.writeFileSync(path.join(DATA_DIR, 'orders.json'), '[]', 'utf8');
-    fs.writeFileSync(path.join(DATA_DIR, 'products.json'), JSON.stringify(SAMPLE_PRODUCTS, null, 2), 'utf8');
+    fs.writeFileSync(
+        path.join(DATA_DIR, 'products.json'),
+        JSON.stringify(SAMPLE_PRODUCTS, null, 2),
+        'utf8'
+    );
 });
 
 afterAll(() => {
@@ -59,8 +90,8 @@ const validShipping = {
         name: 'Test User',
         address: '123 Test Street',
         city: 'Test City',
-        zip: '12345'
-    }
+        zip: '12345',
+    },
 };
 
 // ─── GET /api/orders ──────────────────────────────────────────────────────────
@@ -137,14 +168,9 @@ describe('POST /api/orders (integration)', () => {
     it('should clear the cart after order creation', async () => {
         const { authHeader } = await setupUserWithCart();
 
-        await request(app)
-            .post('/api/orders')
-            .set('Authorization', authHeader)
-            .send(validShipping);
+        await request(app).post('/api/orders').set('Authorization', authHeader).send(validShipping);
 
-        const cartRes = await request(app)
-            .get('/api/cart')
-            .set('Authorization', authHeader);
+        const cartRes = await request(app).get('/api/cart').set('Authorization', authHeader);
 
         expect(cartRes.body.items).toHaveLength(0);
     });
@@ -163,15 +189,13 @@ describe('GET /api/orders/:id (integration)', () => {
 
         const { id } = createRes.body.order;
 
-        const res = await request(app)
-            .get(`/api/orders/${id}`)
-            .set('Authorization', authHeader);
+        const res = await request(app).get(`/api/orders/${id}`).set('Authorization', authHeader);
 
         expect(res.statusCode).toBe(200);
         expect(res.body.id).toBe(id);
     });
 
-    it('should not allow user to view another user\'s order', async () => {
+    it("should not allow user to view another user's order", async () => {
         // Create order as user 1
         const { authHeader: auth1 } = await setupUserWithCart();
         const createRes = await request(app)
@@ -186,9 +210,7 @@ describe('GET /api/orders/:id (integration)', () => {
             .send({ name: 'User2', email: `user2_${Date.now()}@test.com`, password: 'pass' });
         const auth2 = `Bearer ${reg2.body.token}`;
 
-        const res = await request(app)
-            .get(`/api/orders/${id}`)
-            .set('Authorization', auth2);
+        const res = await request(app).get(`/api/orders/${id}`).set('Authorization', auth2);
 
         expect(res.statusCode).toBe(404);
     });
@@ -205,9 +227,7 @@ describe('PUT /api/orders/:id/status (integration)', () => {
             .send(validShipping);
         const { id } = createRes.body.order;
 
-        const res = await request(app)
-            .put(`/api/orders/${id}/status`)
-            .send({ status: 'shipped' });
+        const res = await request(app).put(`/api/orders/${id}/status`).send({ status: 'shipped' });
 
         expect(res.statusCode).toBe(200);
         expect(res.body.order.status).toBe('shipped');
@@ -240,9 +260,7 @@ describe('Full order flow (integration)', () => {
         const { id: orderId } = orderRes.body.order;
 
         // 4. Get orders list – should show this order
-        const listRes = await request(app)
-            .get('/api/orders')
-            .set('Authorization', authHeader);
+        const listRes = await request(app).get('/api/orders').set('Authorization', authHeader);
         expect(listRes.body).toHaveLength(1);
         expect(listRes.body[0].id).toBe(orderId);
 

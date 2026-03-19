@@ -13,9 +13,42 @@ const DATA_DIR = path.join(__dirname, '../../src/data');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 
 const SAMPLE_PRODUCTS = [
-    { id: 1, name: 'Laptop', description: 'A great laptop', price: 999.99, category: 'Electronics', image: 'https://example.com/img.jpg', rating: 4.5, reviews: 100, stock: 10, featured: true },
-    { id: 2, name: 'T-Shirt', description: 'Comfortable cotton shirt', price: 19.99, category: 'Clothing', image: 'https://example.com/img2.jpg', rating: 3.8, reviews: 30, stock: 50, featured: false },
-    { id: 3, name: 'Headphones', description: 'Noise cancelling', price: 199.99, category: 'Electronics', image: 'https://example.com/img3.jpg', rating: 4.9, reviews: 500, stock: 0, featured: false },
+    {
+        id: 1,
+        name: 'Laptop',
+        description: 'A great laptop',
+        price: 999.99,
+        category: 'Electronics',
+        image: 'https://example.com/img.jpg',
+        rating: 4.5,
+        reviews: 100,
+        stock: 10,
+        featured: true,
+    },
+    {
+        id: 2,
+        name: 'T-Shirt',
+        description: 'Comfortable cotton shirt',
+        price: 19.99,
+        category: 'Clothing',
+        image: 'https://example.com/img2.jpg',
+        rating: 3.8,
+        reviews: 30,
+        stock: 50,
+        featured: false,
+    },
+    {
+        id: 3,
+        name: 'Headphones',
+        description: 'Noise cancelling',
+        price: 199.99,
+        category: 'Electronics',
+        image: 'https://example.com/img3.jpg',
+        rating: 4.9,
+        reviews: 500,
+        stock: 0,
+        featured: false,
+    },
 ];
 
 // ─── Backup & Restore ─────────────────────────────────────────────────────────
@@ -126,7 +159,7 @@ describe('POST /api/products (integration)', () => {
             description: 'A useful widget',
             price: 29.99,
             category: 'Accessories',
-            stock: 100
+            stock: 100,
         };
 
         const res = await request(app).post('/api/products').send(newProduct);
@@ -213,9 +246,7 @@ describe('Full product CRUD cycle (integration)', () => {
         expect(readRes.body.name).toBe('Gadget');
 
         // Update
-        const updateRes = await request(app)
-            .put(`/api/products/${id}`)
-            .send({ price: 39.99 });
+        const updateRes = await request(app).put(`/api/products/${id}`).send({ price: 39.99 });
         expect(updateRes.body.price).toBe(39.99);
 
         // Delete

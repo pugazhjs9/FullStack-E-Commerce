@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [main]  # Auto-deploy on every merge to main
+    branches: [main] # Auto-deploy on every merge to main
   workflow_dispatch:
 
 jobs:

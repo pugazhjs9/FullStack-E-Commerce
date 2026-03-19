@@ -4,11 +4,11 @@ A modern, production-ready fullstack e-commerce application built with **React 1
 
 ## 🚀 Live Demo & Deployments
 
-| Environment | Platform | URL |
-|-------------|----------|-----|
-| Frontend (Static) | GitHub Pages | Auto-deployed on merge to `main` |
-| Full Stack | Render.com | Configured via `render.yaml` |
-| Self-hosted | AWS EC2 + Nginx | Automated via GitHub Actions |
+| Environment       | Platform        | URL                              |
+| ----------------- | --------------- | -------------------------------- |
+| Frontend (Static) | GitHub Pages    | Auto-deployed on merge to `main` |
+| Full Stack        | Render.com      | Configured via `render.yaml`     |
+| Self-hosted       | AWS EC2 + Nginx | Automated via GitHub Actions     |
 
 ---
 
@@ -38,6 +38,7 @@ A modern, production-ready fullstack e-commerce application built with **React 1
 ```
 
 ### Data Flow (Shopping Cart Example)
+
 ```
 User clicks "Add to Cart"
   → ProductDetail.jsx calls cartApi.add(productId, quantity)
@@ -51,6 +52,7 @@ User clicks "Add to Cart"
 ```
 
 ### Frontend Architecture
+
 ```
 client/src/
 ├── components/            # Shared UI components
@@ -80,26 +82,27 @@ client/src/
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| Frontend | React 18, React Router v7 | SPA with client-side routing |
-| Build Tool | Vite 5 | Dev server + optimized production bundles |
-| Styling | Custom CSS (36KB) + Tailwind CSS 4 | Dark theme, glassmorphism, animations |
-| Backend | Node.js 20, Express.js 4 | REST API server |
-| Auth | Simple token (`token_<id>_<ts>`) | Session management without library dependency |
-| Storage | JSON flat files | Zero-setup data persistence |
-| Unit Tests | Vitest (client), Jest (server) | Component and route testing |
-| Integration Tests | Supertest + Jest | Real HTTP + real file I/O |
-| E2E Tests | Playwright | Full browser user flow tests |
-| CI/CD | GitHub Actions | Auto test + lint + deploy on push |
-| Containers | Docker + Docker Compose | Reproducible local and production environment |
-| Deployment | AWS EC2 + Nginx + PM2 | Production self-hosting |
+| Layer             | Technology                         | Purpose                                       |
+| ----------------- | ---------------------------------- | --------------------------------------------- |
+| Frontend          | React 18, React Router v7          | SPA with client-side routing                  |
+| Build Tool        | Vite 5                             | Dev server + optimized production bundles     |
+| Styling           | Custom CSS (36KB) + Tailwind CSS 4 | Dark theme, glassmorphism, animations         |
+| Backend           | Node.js 20, Express.js 4           | REST API server                               |
+| Auth              | Simple token (`token_<id>_<ts>`)   | Session management without library dependency |
+| Storage           | JSON flat files                    | Zero-setup data persistence                   |
+| Unit Tests        | Vitest (client), Jest (server)     | Component and route testing                   |
+| Integration Tests | Supertest + Jest                   | Real HTTP + real file I/O                     |
+| E2E Tests         | Playwright                         | Full browser user flow tests                  |
+| CI/CD             | GitHub Actions                     | Auto test + lint + deploy on push             |
+| Containers        | Docker + Docker Compose            | Reproducible local and production environment |
+| Deployment        | AWS EC2 + Nginx + PM2              | Production self-hosting                       |
 
 ---
 
 ## 🚦 Getting Started
 
 ### Prerequisites
+
 - Node.js 18+ (`node --version`)
 - npm 8+ (`npm --version`)
 - Docker + Docker Compose (optional, for containerised setup)
@@ -162,10 +165,10 @@ cd client && npm run dev        # http://localhost:5173
 
 ### Demo Account
 
-| Field | Value |
-|-------|-------|
-| Email | `demo@shopsmart.com` |
-| Password | `demo123` |
+| Field    | Value                |
+| -------- | -------------------- |
+| Email    | `demo@shopsmart.com` |
+| Password | `demo123`            |
 
 ---
 
@@ -233,16 +236,16 @@ npm run test:all
 
 ### Workflows Overview
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `frontend-tests.yml` | push + PR to main | Lint → Format → Vitest → Playwright → Build |
-| `integration.yml` | push + PR to main | Node 18/20/22 matrix: lint, test, build; Slack notify |
-| `ci.yml` | push + PR (all branches) | Full CI: client + server build, test, format |
-| `deploy.yml` | push to main | SSH → EC2: git pull, npm ci, PM2 restart, Nginx reload, health check |
-| `gh-pages.yml` | push to main | Build Vite → deploy to GitHub Pages |
-| `server_matrix.yml` | manual | Node version compatibility check |
-| `variables_secrets.yml` | manual | Demo: env variables and artifact management |
-| `recap.yml` | manual | Demo: basic workflow concepts |
+| Workflow                | Trigger                  | Purpose                                                              |
+| ----------------------- | ------------------------ | -------------------------------------------------------------------- |
+| `frontend-tests.yml`    | push + PR to main        | Lint → Format → Vitest → Playwright → Build                          |
+| `integration.yml`       | push + PR to main        | Node 18/20/22 matrix: lint, test, build; Slack notify                |
+| `ci.yml`                | push + PR (all branches) | Full CI: client + server build, test, format                         |
+| `deploy.yml`            | push to main             | SSH → EC2: git pull, npm ci, PM2 restart, Nginx reload, health check |
+| `gh-pages.yml`          | push to main             | Build Vite → deploy to GitHub Pages                                  |
+| `server_matrix.yml`     | manual                   | Node version compatibility check                                     |
+| `variables_secrets.yml` | manual                   | Demo: env variables and artifact management                          |
+| `recap.yml`             | manual                   | Demo: basic workflow concepts                                        |
 
 ### CI/CD Flow Diagram
 
@@ -288,54 +291,59 @@ Developer pushes to any branch
 
 ### GitHub Secrets Required for Deployment
 
-| Secret | Description |
-|--------|-------------|
-| `EC2_SSH_KEY` | Private key content of the EC2 key pair (`.pem` file content) |
-| `EC2_USER` | EC2 SSH username (e.g., `ec2-user` for Amazon Linux) |
-| `EC2_HOST` | EC2 public IP or domain |
-| `SLACK_WEBHOOK_URL` | Slack webhook URL for CI notifications |
+| Secret              | Description                                                   |
+| ------------------- | ------------------------------------------------------------- |
+| `EC2_SSH_KEY`       | Private key content of the EC2 key pair (`.pem` file content) |
+| `EC2_USER`          | EC2 SSH username (e.g., `ec2-user` for Amazon Linux)          |
+| `EC2_HOST`          | EC2 public IP or domain                                       |
+| `SLACK_WEBHOOK_URL` | Slack webhook URL for CI notifications                        |
 
 ---
 
 ## 📡 API Reference
 
 ### Authentication
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/auth/register` | — | Register new user |
-| POST | `/api/auth/login` | — | Login → returns token |
-| GET | `/api/auth/me` | ✅ | Get current user |
+
+| Method | Endpoint             | Auth | Description           |
+| ------ | -------------------- | ---- | --------------------- |
+| POST   | `/api/auth/register` | —    | Register new user     |
+| POST   | `/api/auth/login`    | —    | Login → returns token |
+| GET    | `/api/auth/me`       | ✅   | Get current user      |
 
 ### Products
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/products` | — | List products (supports `?category=`, `?search=`, `?sort=`) |
-| GET | `/api/products/:id` | — | Get single product |
-| GET | `/api/products/categories` | — | List all categories |
-| POST | `/api/products` | — | Create product |
-| PUT | `/api/products/:id` | — | Update product |
-| DELETE | `/api/products/:id` | — | Delete product |
+
+| Method | Endpoint                   | Auth | Description                                                 |
+| ------ | -------------------------- | ---- | ----------------------------------------------------------- |
+| GET    | `/api/products`            | —    | List products (supports `?category=`, `?search=`, `?sort=`) |
+| GET    | `/api/products/:id`        | —    | Get single product                                          |
+| GET    | `/api/products/categories` | —    | List all categories                                         |
+| POST   | `/api/products`            | —    | Create product                                              |
+| PUT    | `/api/products/:id`        | —    | Update product                                              |
+| DELETE | `/api/products/:id`        | —    | Delete product                                              |
 
 ### Cart
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/cart` | ✅ | Get user's cart |
-| POST | `/api/cart` | ✅ | Add item (`{ productId, quantity }`) |
-| PUT | `/api/cart/:productId` | ✅ | Update quantity |
-| DELETE | `/api/cart/:productId` | ✅ | Remove item |
-| DELETE | `/api/cart` | ✅ | Clear cart |
+
+| Method | Endpoint               | Auth | Description                          |
+| ------ | ---------------------- | ---- | ------------------------------------ |
+| GET    | `/api/cart`            | ✅   | Get user's cart                      |
+| POST   | `/api/cart`            | ✅   | Add item (`{ productId, quantity }`) |
+| PUT    | `/api/cart/:productId` | ✅   | Update quantity                      |
+| DELETE | `/api/cart/:productId` | ✅   | Remove item                          |
+| DELETE | `/api/cart`            | ✅   | Clear cart                           |
 
 ### Orders
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/orders` | ✅ | Get user's orders |
-| GET | `/api/orders/:id` | ✅ | Get single order |
-| POST | `/api/orders` | ✅ | Create order from cart |
+
+| Method | Endpoint          | Auth | Description            |
+| ------ | ----------------- | ---- | ---------------------- |
+| GET    | `/api/orders`     | ✅   | Get user's orders      |
+| GET    | `/api/orders/:id` | ✅   | Get single order       |
+| POST   | `/api/orders`     | ✅   | Create order from cart |
 
 ### Health
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Returns `{ status: "ok", timestamp }` |
+
+| Method | Endpoint      | Description                           |
+| ------ | ------------- | ------------------------------------- |
+| GET    | `/api/health` | Returns `{ status: "ok", timestamp }` |
 
 ---
 
@@ -343,12 +351,12 @@ Developer pushes to any branch
 
 ### EC2 Scripts (`scripts/`)
 
-| Script | Purpose |
-|--------|---------|
-| `launch_ec2.sh` | Idempotent instance launcher — skips existing resources |
+| Script                | Purpose                                                    |
+| --------------------- | ---------------------------------------------------------- |
+| `launch_ec2.sh`       | Idempotent instance launcher — skips existing resources    |
 | `safe_ec2_control.sh` | State-aware start/stop — no-ops on already-running/stopped |
-| `ec2_health_check.sh` | Polls public IP until app is responding |
-| `ec2_control.sh` | Simple start/stop wrapper |
+| `ec2_health_check.sh` | Polls public IP until app is responding                    |
+| `ec2_control.sh`      | Simple start/stop wrapper                                  |
 
 ### Initial EC2 Server Setup (one-time)
 
@@ -416,29 +424,34 @@ Both lint and format checks **fail CI** — there is no `|| true` silencing.
 ## 🐛 Known Limitations & Design Decisions
 
 ### Why JSON Files Instead of a Database?
+
 JSON files were chosen for **zero-setup portability**. Every evaluator, contributor, or new developer can clone and run `./run.sh` — no database install, no connection string, no Docker needed just to start. The trade-off is that concurrent writes from multiple server processes are not safe.
 
 ### Authentication Tokens
+
 A simple `token_<id>_<timestamp>` format is used instead of JWT to avoid any cryptography library dependency. This means tokens never expire. **For production**, replace with `jsonwebtoken` and `bcrypt`.
 
 ### Passwords Stored in Plain Text
+
 ⚠️ The current implementation stores passwords as plain text in `users.json`. This is intentional for project-scope simplicity. **Before any real deployment**, add bcrypt:
+
 ```bash
 cd server && npm install bcrypt
 ```
+
 Then hash in `authRoutes.js` at registration and compare at login.
 
 ---
 
 ## 🔒 Security Features Implemented
 
-| Feature | Implementation |
-|---------|---------------|
-| CORS allowlist | `ALLOWED_ORIGINS` env var — no wildcard `*` |
-| Auth middleware | Token required on all cart/order endpoints |
+| Feature                | Implementation                                                  |
+| ---------------------- | --------------------------------------------------------------- |
+| CORS allowlist         | `ALLOWED_ORIGINS` env var — no wildcard `*`                     |
+| Auth middleware        | Token required on all cart/order endpoints                      |
 | Nginx security headers | `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection` |
-| Non-root Docker user | Server container runs as `nodeuser` (UID 1001) |
-| npm ci in CI | Uses lockfile — reproducible, no supply-chain drift |
+| Non-root Docker user   | Server container runs as `nodeuser` (UID 1001)                  |
+| npm ci in CI           | Uses lockfile — reproducible, no supply-chain drift             |
 
 ---
 

@@ -8,15 +8,15 @@ const dataDir = path.join(__dirname, '../data');
  * @param {string} filename - Name of the JSON file (without path)
  * @returns {Array|Object} Parsed JSON data
  */
-const readData = (filename) => {
-  try {
-    const filePath = path.join(dataDir, filename);
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error(`Error reading ${filename}:`, error.message);
-    return [];
-  }
+const readData = filename => {
+    try {
+        const filePath = path.join(dataDir, filename);
+        const data = fs.readFileSync(filePath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error(`Error reading ${filename}:`, error.message);
+        return [];
+    }
 };
 
 /**
@@ -26,14 +26,14 @@ const readData = (filename) => {
  * @returns {boolean} Success status
  */
 const writeData = (filename, data) => {
-  try {
-    const filePath = path.join(dataDir, filename);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-    return true;
-  } catch (error) {
-    console.error(`Error writing ${filename}:`, error.message);
-    return false;
-  }
+    try {
+        const filePath = path.join(dataDir, filename);
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+        return true;
+    } catch (error) {
+        console.error(`Error writing ${filename}:`, error.message);
+        return false;
+    }
 };
 
 /**
@@ -41,14 +41,14 @@ const writeData = (filename, data) => {
  * @param {Array} collection - Array of items with id property
  * @returns {number} New unique ID
  */
-const generateId = (collection) => {
-  if (!collection || collection.length === 0) return 1;
-  const maxId = Math.max(...collection.map(item => item.id || 0));
-  return maxId + 1;
+const generateId = collection => {
+    if (!collection || collection.length === 0) return 1;
+    const maxId = Math.max(...collection.map(item => item.id || 0));
+    return maxId + 1;
 };
 
 module.exports = {
-  readData,
-  writeData,
-  generateId
+    readData,
+    writeData,
+    generateId,
 };

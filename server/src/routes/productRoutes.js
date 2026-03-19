@@ -12,17 +12,16 @@ router.get('/', (req, res) => {
 
         // Filter by category
         if (category && category !== 'all') {
-            products = products.filter(p =>
-                p.category.toLowerCase() === category.toLowerCase()
-            );
+            products = products.filter(p => p.category.toLowerCase() === category.toLowerCase());
         }
 
         // Filter by search term
         if (search) {
             const searchLower = search.toLowerCase();
-            products = products.filter(p =>
-                p.name.toLowerCase().includes(searchLower) ||
-                p.description.toLowerCase().includes(searchLower)
+            products = products.filter(
+                p =>
+                    p.name.toLowerCase().includes(searchLower) ||
+                    p.description.toLowerCase().includes(searchLower)
             );
         }
 
@@ -102,7 +101,7 @@ router.post('/', (req, res) => {
             rating: 0,
             reviews: 0,
             stock: stock || 0,
-            featured: false
+            featured: false,
         };
 
         products.push(newProduct);
@@ -127,7 +126,7 @@ router.put('/:id', (req, res) => {
         const updatedProduct = {
             ...products[productIndex],
             ...req.body,
-            id: products[productIndex].id // Preserve original ID
+            id: products[productIndex].id, // Preserve original ID
         };
 
         products[productIndex] = updatedProduct;

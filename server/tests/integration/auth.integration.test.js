@@ -55,7 +55,7 @@ describe('POST /api/auth/register (integration)', () => {
         const { res } = await registerUser({
             name: 'Alice',
             email: 'alice@integration.com',
-            password: 'securepass'
+            password: 'securepass',
         });
 
         expect(res.statusCode).toBe(201);
@@ -67,9 +67,7 @@ describe('POST /api/auth/register (integration)', () => {
     });
 
     it('should reject registration with missing fields', async () => {
-        const res = await request(app)
-            .post('/api/auth/register')
-            .send({ name: 'Bob' });
+        const res = await request(app).post('/api/auth/register').send({ name: 'Bob' });
         expect(res.statusCode).toBe(400);
     });
 
@@ -130,9 +128,7 @@ describe('GET /api/auth/me (integration)', () => {
         const { res: regRes } = await registerUser({ name: 'MeUser', email: 'me@test.com' });
         const { token } = regRes.body;
 
-        const res = await request(app)
-            .get('/api/auth/me')
-            .set('Authorization', `Bearer ${token}`);
+        const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
 
         expect(res.statusCode).toBe(200);
         expect(res.body.name).toBe('MeUser');
@@ -160,7 +156,7 @@ describe('Full auth flow (integration)', () => {
         const { res: regRes } = await registerUser({
             name: 'FlowUser',
             email: 'flow@test.com',
-            password: 'flowpass'
+            password: 'flowpass',
         });
         expect(regRes.statusCode).toBe(201);
 

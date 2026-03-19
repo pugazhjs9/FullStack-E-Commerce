@@ -21,14 +21,14 @@ module.exports = {
             },
         ],
         'no-console': 'off', // console.log is fine in Node servers
-        'eqeqeq': ['error', 'always'],
+        eqeqeq: ['error', 'always'],
         'no-var': 'error',
         'prefer-const': 'error',
 
         // Style enforced by Prettier (disable conflicting rules)
         'no-extra-semi': 'off',
-        'quotes': 'off',
-        'semi': 'off',
+        quotes: 'off',
+        semi: 'off',
     },
     ignorePatterns: ['node_modules/', 'coverage/', '*.min.js'],
 };
