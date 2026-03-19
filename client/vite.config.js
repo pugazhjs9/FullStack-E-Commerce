@@ -2,9 +2,10 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
   base: command === "build" ? "/FullStack-E-Commerce/" : "/",
   plugins: [react()],
+  css: mode === "test" ? false : undefined,
   server: {
     proxy: {
       "/api": {
@@ -17,7 +18,6 @@ export default defineConfig(({ command }) => ({
     globals: true,
     environment: "jsdom",
     setupFiles: "./src/setupTests.js",
-    css: { postcss: null },
     include: ["src/**/*.test.{js,jsx}", "src/__tests__/**/*.test.{js,jsx}"],
     exclude: ["node_modules", "tests/e2e/**"],
   },
