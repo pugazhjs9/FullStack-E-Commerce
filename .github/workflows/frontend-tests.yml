@@ -31,7 +31,10 @@ jobs:
 
       # Install
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
+
+      - name: Rebuild native bindings
+        run: npm rebuild
 
       # Code Quality
       - name: Lint
