@@ -34,7 +34,11 @@ jobs:
       # SERVER
       - name: Install Server Dependencies
         working-directory: ./server
-        run: npm ci
+        run: npm install
+
+      - name: Rebuild Server native bindings
+        working-directory: ./server
+        run: npm rebuild
 
       - name: Run Server Lint
         working-directory: ./server
