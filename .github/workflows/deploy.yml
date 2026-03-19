@@ -25,13 +25,13 @@ jobs:
           ssh -i ~/.ssh/github_actions ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
             set -e
             echo "=== Pulling latest code ==="
-            cd ~/shopsmart
+            cd ~/FullStack-E-Commerce
             git pull origin main
 
             echo "=== Updating backend ==="
             cd server
             npm ci --omit=dev
-            pm2 restart shopsmart-backend || pm2 start src/index.js --name shopsmart-backend
+            pm2 restart fullstack-backend || pm2 start src/index.js --name fullstack-backend
 
             echo "=== Updating frontend ==="
             cd ../client
@@ -39,7 +39,8 @@ jobs:
             npm run build
 
             echo "=== Syncing build to nginx ==="
-            sudo rsync -a --delete dist/ /var/www/shopsmart/client/dist/
+            sudo mkdir -p /var/www/FullStack-E-Commerce/client/dist/
+            sudo rsync -a --delete dist/ /var/www/FullStack-E-Commerce/client/dist/
             sudo systemctl reload nginx
 
             echo "=== Deploy complete ==="
