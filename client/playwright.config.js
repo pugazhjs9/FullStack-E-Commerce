@@ -32,13 +32,13 @@ export default defineConfig({
   // Auto-start backend then frontend before running tests
   webServer: [
     {
-      command: "cd server && npm start",
+      command: "cd ../server && npm start",
       url: "http://localhost:5001/api/health",
       reuseExistingServer: !process.env.CI,
       timeout: 30000,
     },
     {
-      command: "cd client && npm run dev",
+      command: "npm run dev",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 30000,
