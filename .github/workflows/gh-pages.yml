@@ -41,8 +41,6 @@ jobs:
 
       - name: Run Tests
         run: npm test -- --run
-        env:
-          NODE_ENV: test
 
       - name: Build
         run: npm run build

@@ -46,8 +46,6 @@ jobs:
       # Unit & Integration Tests (Vitest)
       - name: Run Tests (Vitest)
         run: npm test
-        env:
-          NODE_ENV: test
 
       # Build
       - name: Build
