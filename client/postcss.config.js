@@ -1,9 +1,12 @@
+/* eslint-env node */
+
+const isTest = process.env.NODE_ENV === "test";
+
 export default {
-  plugins:
-    process.env.NODE_ENV === "test"
-      ? {}
-      : {
-          "@tailwindcss/postcss": {},
-          autoprefixer: {},
-        },
+  plugins: isTest
+    ? []
+    : {
+        tailwindcss: {},
+        autoprefixer: {},
+      },
 };
