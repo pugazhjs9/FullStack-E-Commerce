@@ -94,7 +94,9 @@ jobs:
         run: npm ci
       
       - name: Run tests
-        run: npm run test
+        run: |
+          npm run test:unit
+          npm run test:integration
       
       - name: Check formatting
         run: npm run format -- --check

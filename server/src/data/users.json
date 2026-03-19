@@ -509,5 +509,131 @@
     "email": "checkout_e2e_1773400024361@test.com",
     "password": "CheckoutPass123",
     "createdAt": "2026-03-13T11:07:04.807Z"
+  },
+  {
+    "id": 74,
+    "name": "E2E User",
+    "email": "e2e_1773900926203@test.com",
+    "password": "TestPass123",
+    "createdAt": "2026-03-19T06:15:26.617Z"
+  },
+  {
+    "id": 75,
+    "name": "E2E User",
+    "email": "e2e_1773900926767@test.com",
+    "password": "TestPass123",
+    "createdAt": "2026-03-19T06:15:27.236Z"
+  },
+  {
+    "id": 76,
+    "name": "E2E User",
+    "email": "e2e_1773900930393@test.com",
+    "password": "TestPass123",
+    "createdAt": "2026-03-19T06:15:30.757Z"
+  },
+  {
+    "id": 77,
+    "name": "E2E User",
+    "email": "e2e_1773900931180@test.com",
+    "password": "TestPass123",
+    "createdAt": "2026-03-19T06:15:31.623Z"
+  },
+  {
+    "id": 78,
+    "name": "E2E User",
+    "email": "e2e_1773900932008@test.com",
+    "password": "TestPass123",
+    "createdAt": "2026-03-19T06:15:32.321Z"
+  },
+  {
+    "id": 79,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900932517@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:32.904Z"
+  },
+  {
+    "id": 80,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900933076@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:33.381Z"
+  },
+  {
+    "id": 81,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900933598@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:33.916Z"
+  },
+  {
+    "id": 82,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900935094@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:35.426Z"
+  },
+  {
+    "id": 83,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900936689@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:37.173Z"
+  },
+  {
+    "id": 84,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900938328@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:38.803Z"
+  },
+  {
+    "id": 85,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900940004@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:40.507Z"
+  },
+  {
+    "id": 86,
+    "name": "Cart Tester",
+    "email": "cart_e2e_1773900940796@test.com",
+    "password": "CartPass123",
+    "createdAt": "2026-03-19T06:15:41.272Z"
+  },
+  {
+    "id": 87,
+    "name": "Empty Cart User",
+    "email": "checkout_empty_1773900950392@test.com",
+    "password": "pass1234",
+    "createdAt": "2026-03-19T06:15:50.844Z"
+  },
+  {
+    "id": 88,
+    "name": "Checkout Tester",
+    "email": "checkout_e2e_1773900951073@test.com",
+    "password": "CheckoutPass123",
+    "createdAt": "2026-03-19T06:15:51.409Z"
+  },
+  {
+    "id": 89,
+    "name": "Checkout Tester",
+    "email": "checkout_e2e_1773900952767@test.com",
+    "password": "CheckoutPass123",
+    "createdAt": "2026-03-19T06:15:53.274Z"
+  },
+  {
+    "id": 90,
+    "name": "Checkout Tester",
+    "email": "checkout_e2e_1773900955470@test.com",
+    "password": "CheckoutPass123",
+    "createdAt": "2026-03-19T06:15:55.976Z"
+  },
+  {
+    "id": 91,
+    "name": "Checkout Tester",
+    "email": "checkout_e2e_1773900958161@test.com",
+    "password": "CheckoutPass123",
+    "createdAt": "2026-03-19T06:15:58.519Z"
   }
 ]

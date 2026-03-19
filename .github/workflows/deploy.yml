@@ -16,7 +16,7 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > ~/.ssh/github_actions
+          echo "${{ secrets.EC2_KEY }}" | tr -d '\r' > ~/.ssh/github_actions
           chmod 600 ~/.ssh/github_actions
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
