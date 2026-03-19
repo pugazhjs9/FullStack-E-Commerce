@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
@@ -22,15 +23,46 @@ function App() {
                         <Navbar />
                         <main className="main-content">
                             <Routes>
+                                {/* Public routes */}
                                 <Route path="/" element={<Home />} />
                                 <Route path="/products" element={<Products />} />
                                 <Route path="/products/:id" element={<ProductDetail />} />
-                                <Route path="/cart" element={<Cart />} />
-                                <Route path="/checkout" element={<Checkout />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
-                                <Route path="/orders" element={<Orders />} />
-                                <Route path="/orders/:id" element={<Orders />} />
+
+                                {/* Protected routes — require authentication */}
+                                <Route
+                                    path="/cart"
+                                    element={
+                                        <ProtectedRoute>
+                                            <Cart />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/checkout"
+                                    element={
+                                        <ProtectedRoute>
+                                            <Checkout />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/orders"
+                                    element={
+                                        <ProtectedRoute>
+                                            <Orders />
+                                        </ProtectedRoute>
+                                    }
+                                />
+                                <Route
+                                    path="/orders/:id"
+                                    element={
+                                        <ProtectedRoute>
+                                            <Orders />
+                                        </ProtectedRoute>
+                                    }
+                                />
                             </Routes>
                         </main>
                         <Footer />
