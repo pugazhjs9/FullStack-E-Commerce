@@ -1,0 +1,63 @@
+version: '3.9'
+
+# ==============================================================================
+# ShopSmart — Docker Compose
+# Usage:
+#   Development:  docker compose up
+#   Production:   docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# ==============================================================================
+
+services:
+
+  # ─── Backend: Node.js / Express API ──────────────────────────────────────────
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: shopsmart-server
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80
+    volumes:
+      # Persist JSON data files between container restarts
+      - server-data:/app/src/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - shopsmart-net
+
+  # ─── Frontend: Vite build → Nginx ────────────────────────────────────────────
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        # The client talks to the server via the host machine's port 5001
+        VITE_API_URL: "http://localhost:5001"
+    container_name: shopsmart-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - shopsmart-net
+
+# ─── Networking ───────────────────────────────────────────────────────────────
+networks:
+  shopsmart-net:
+    driver: bridge
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  server-data:
+    driver: local
