@@ -50,13 +50,14 @@ async function fillCheckoutForm(page) {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 test.describe("Checkout", () => {
-  test('should show "Please login to checkout" when not logged in', async ({
+  test("should redirect to login when not logged in", async ({
     page,
   }) => {
     await page.goto("/checkout");
     await expect(
-      page.getByRole("heading", { name: "Please login to checkout" }),
+      page.getByRole("heading", { name: "Welcome Back" })
     ).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
   });
 
   test('should show "Your cart is empty" when logged in but cart is empty', async ({
