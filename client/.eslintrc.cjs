@@ -18,4 +18,12 @@ module.exports = {
       { allowConstantExport: true },
     ],
   },
+  overrides: [
+    {
+      files: ['**/*.test.{js,jsx}', '**/__tests__/**/*.{js,jsx}'],
+      env: { node: true },
+      globals: { global: 'readonly' },
+    },
+  ],
 }
+
