@@ -30,12 +30,14 @@ jobs:
 
             echo "=== Updating backend ==="
             cd server
-            npm ci --omit=dev
+            npm install --omit=dev
+            npm rebuild
             pm2 restart fullstack-backend || pm2 start src/index.js --name fullstack-backend
 
             echo "=== Updating frontend ==="
             cd ../client
-            npm ci
+            npm install
+            npm rebuild
             npm run build
 
             echo "=== Syncing build to nginx ==="

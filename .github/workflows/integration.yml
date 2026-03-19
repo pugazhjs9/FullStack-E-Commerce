@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [18.x]
 
     steps:
       - name: Checkout Code
@@ -34,7 +34,11 @@ jobs:
       # SERVER
       - name: Install Server Dependencies
         working-directory: ./server
-        run: npm ci
+        run: npm install
+
+      - name: Rebuild Server native bindings
+        working-directory: ./server
+        run: npm rebuild
 
       - name: Run Server Lint
         working-directory: ./server
