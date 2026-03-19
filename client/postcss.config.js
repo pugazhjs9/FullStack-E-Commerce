@@ -1,6 +1,9 @@
 export default {
-  plugins: {
-    "@tailwindcss/postcss": {},
-    autoprefixer: {},
-  },
+  plugins:
+    process.env.NODE_ENV === "test"
+      ? {}
+      : {
+          "@tailwindcss/postcss": {},
+          autoprefixer: {},
+        },
 };

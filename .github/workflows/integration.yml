@@ -74,6 +74,8 @@ jobs:
       - name: Run Client Tests
         working-directory: ./client
         run: npm run test -- --run
+        env:
+          NODE_ENV: test
 
       - name: Build Client
         working-directory: ./client
