@@ -20,6 +20,20 @@ cd client
 npm install
 cd ..
 
+echo -e "\n⚙️  Setting up environment variables..."
+if [ ! -f "server/.env" ]; then
+  cp server/.env.example server/.env
+  echo "✔ Created server/.env"
+fi
+
+if [ ! -f "client/.env" ]; then
+  cp client/.env.example client/.env
+  echo "✔ Created client/.env"
+fi
+
+echo -e "\n🌐 Installing Playwright browsers for E2E testing..."
+npx playwright install
+
 echo -e "\n🚀 Setup complete! Starting the application..."
 echo "========================================="
 
