@@ -1,10 +1,6 @@
-version: "3.9"
-
 # ==============================================================================
-# ShopSmart — Docker Compose
-# Usage:
-#   Development:  docker compose up
-#   Production:   docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# Antigravity — Docker Compose (Development)
+# Usage:  docker compose up --build
 # ==============================================================================
 
 services:
@@ -13,50 +9,60 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: shopsmart-server
+    container_name: antigravity-server
     restart: unless-stopped
     ports:
       - "5001:5001"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=5001
-      - ALLOWED_ORIGINS=http://localhost,http://localhost:80
+      - DATABASE_URL=file:/app/prisma/dev.db
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost
     volumes:
-      # Persist JSON data files between container restarts
-      - server-data:/app/src/data
+      # Bind-mount source for live reload
+      - ./server:/app
+      # Persist node_modules separately (avoid overwriting container installs)
+      - server-node-modules:/app/node_modules
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:5001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     networks:
-      - shopsmart-net
+      - antigravity-net
 
-  # ─── Frontend: Vite build → Nginx ────────────────────────────────────────────
+  # ─── Frontend: Vite Dev Server ───────────────────────────────────────────────
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
-      args:
-        # The client talks to the server via the host machine's port 5001
-        VITE_API_URL: "http://localhost:5001"
-    container_name: shopsmart-client
+    container_name: antigravity-client
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5001
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      # Bind-mount source for hot-module replacement
+      - ./client:/app
+      # Persist node_modules separately
+      - client-node-modules:/app/node_modules
     depends_on:
       server:
         condition: service_healthy
     networks:
-      - shopsmart-net
+      - antigravity-net
 
 # ─── Networking ───────────────────────────────────────────────────────────────
 networks:
-  shopsmart-net:
+  antigravity-net:
     driver: bridge
 
-# ─── Volumes ──────────────────────────────────────────────────────────────────
+# ─── Named Volumes ────────────────────────────────────────────────────────────
 volumes:
-  server-data:
+  server-node-modules:
+    driver: local
+  client-node-modules:
     driver: local
