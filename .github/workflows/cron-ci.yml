@@ -1,0 +1,87 @@
+name: Nightly Build
+
+on:
+  schedule:
+    # Runs every day at 4:30 AM UTC (10:00 AM IST)
+    - cron: "30 4 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  nightly-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Log Start Time
+        run: echo "Starting nightly build at $(date -u)"
+
+      # ─── Server ──────────────────────────────────────────────────────────
+      - name: Install Server Dependencies
+        working-directory: ./server
+        run: npm install
+
+      - name: Run Server Lint
+        working-directory: ./server
+        run: npm run lint
+
+      - name: Run Server Tests
+        working-directory: ./server
+        run: |
+          npm run test:unit
+          npm run test:integration
+
+      # ─── Client ──────────────────────────────────────────────────────────
+      - name: Install Client Dependencies
+        working-directory: ./client
+        run: rm -rf node_modules package-lock.json && npm install
+
+      - name: Rebuild Client native bindings
+        working-directory: ./client
+        run: npm rebuild
+
+      - name: Run Client Lint
+        working-directory: ./client
+        run: npm run lint
+
+      - name: Run Client Tests
+        working-directory: ./client
+        run: npm run test -- --run
+
+      - name: Build Client
+        working-directory: ./client
+        run: npm run build
+
+      # ─── Notify ──────────────────────────────────────────────────────────
+      - name: Slack Notify
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_CHANNEL: "#all-github-actions"
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_TITLE: "Nightly Build | ${{ github.repository }}"
+          SLACK_MESSAGE: "${{ job.status == 'success' && '🟢 NIGHTLY PASSED' || '🔴 NIGHTLY FAILED' }} | <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+          SLACK_USERNAME: "GitHub CI"
+          SLACK_ICON_EMOJI: ":crescent_moon:"
+
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-fail-logs
+          path: |
+            ~/.npm/_logs/
+            **/*.log
+          retention-days: 7
