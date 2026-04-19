@@ -14,28 +14,7 @@ A modern, production-ready fullstack e-commerce application built with **React 1
 
 ## 🏗️ System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Client Browser                               │
-│                     (React 18 + Vite SPA)                           │
-└─────────────────────┬───────────────────────────────────────────────┘
-                      │  HTTP/HTTPS (REST API calls)
-                      │  VITE_API_URL → /api/*
-                      ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Express.js Backend                              │
-│                     Node.js + CORS + JSON                           │
-│                                                                     │
-│   /api/health       /api/products     /api/auth                     │
-│   /api/cart         /api/orders                                     │
-│                                                                     │
-│         ┌───────────────────────────────────┐                       │
-│         │    JSON File-based Storage        │                       │
-│         │  users.json   carts.json          │                       │
-│         │  products.json  orders.json       │                       │
-│         └───────────────────────────────────┘                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
+![System Architecture](client_backend_architecture.svg)
 
 ### Data Flow (Shopping Cart Example)
 
@@ -249,45 +228,8 @@ npm run test:all
 
 ### CI/CD Flow Diagram
 
-```
-Developer pushes to any branch
-         │
-         ▼
-  ┌──────────────────┐
-  │   ci.yml starts  │  ← Runs on EVERY push/PR
-  │  • Install deps  │
-  │  • ESLint        │
-  │  • Prettier      │
-  │  • Tests         │
-  │  • Build         │
-  └──────────────────┘
-         │
-         │  (if branch = main)
-         ▼
-  ┌──────────────────────────────────────────────┐
-  │         frontend-tests.yml                   │
-  │  • Vitest unit + integration tests           │
-  │  • Playwright E2E on Chromium                │
-  │  • Upload HTML report as artifact            │
-  └──────────────────────────────────────────────┘
-         │
-  ┌──────────────────────────────────────────────┐
-  │         integration.yml                      │
-  │  • Node 18 / 20 / 22 matrix                  │
-  │  • Full lint + test + build                  │
-  │  • Slack notification (pass/fail)            │
-  └──────────────────────────────────────────────┘
-         │
-  ┌──────────────────────────────────────────────┐
-  │         deploy.yml (auto on main push)       │
-  │  • SSH into EC2                              │
-  │  • git pull origin main                      │
-  │  • npm ci + PM2 restart backend              │
-  │  • npm run build + rsync frontend            │
-  │  • nginx reload                              │
-  │  • curl /api/health (must return 200)        │
-  └──────────────────────────────────────────────┘
-```
+![CI/CD Pipeline](cicd_pipeline_diagram.svg)
+
 
 ### GitHub Secrets Required for Deployment
 
