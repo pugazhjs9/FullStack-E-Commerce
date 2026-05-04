@@ -3,7 +3,7 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# Pull all subnets that belong to the default VPC (spans multiple AZs)
+# Pull all subnet IDs that belong to the default VPC
 data "aws_subnets" "default" {
   filter {
     name   = "vpc-id"
@@ -11,26 +11,20 @@ data "aws_subnets" "default" {
   }
 }
 
-# Only standard AZs — excludes opt-in zones (e.g. us-east-1e) that
-# do not support EKS control plane instance placement
-data "aws_availability_zones" "eks_supported" {
-  state = "available"
-  filter {
-    name   = "opt-in-status"
-    values = ["opt-in-not-required"]
-  }
+# Resolve individual subnet attributes so we can inspect the AZ of each one
+data "aws_subnet" "default_each" {
+  for_each = toset(data.aws_subnets.default.ids)
+  id       = each.value
 }
 
-# Subnets restricted to EKS-supported AZs only
-data "aws_subnets" "eks_safe" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-  filter {
-    name   = "availabilityZone"
-    values = data.aws_availability_zones.eks_supported.names
-  }
+locals {
+  # EKS rejects subnets in us-east-1e (and any AZ ending in 'e') because
+  # those AZs don't support EKS control plane instances. Filter them out here.
+  # ECS uses the full default subnet list and is unaffected.
+  eks_subnet_ids = [
+    for s in data.aws_subnet.default_each : s.id
+    if !endswith(s.availability_zone, "e")
+  ]
 }
 
 # Resolve the current account ID — used to construct ARNs
