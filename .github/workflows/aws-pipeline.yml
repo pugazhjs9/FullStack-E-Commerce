@@ -1,0 +1,369 @@
+name: AWS Production Pipeline
+
+# Runs on every push/PR to main and on manual trigger
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Shared environment variables available to all jobs
+env:
+  AWS_REGION:        ${{ secrets.AWS_REGION }}
+  APP_NAME:          shopsmart
+  TF_VERSION:        1.7.5
+  NODE_VERSION:      "20"
+
+jobs:
+  # ============================================================================
+  # PHASE 1 — TESTING
+  # Run unit + integration tests and upload reports as artifacts
+  # ============================================================================
+
+  test-server:
+    name: "Phase 1 · Server Tests"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit -- --json --outputFile=reports/unit-results.json
+
+      - name: Run integration tests
+        run: npm run test:integration -- --json --outputFile=reports/integration-results.json --runInBand
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-test-reports
+          path: server/reports/
+          retention-days: 14
+
+  test-client:
+    name: "Phase 1 · Client Tests"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest unit tests
+        run: npm run test -- --reporter=json --outputFile=reports/client-results.json
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-test-reports
+          path: client/reports/
+          retention-days: 14
+
+  # ============================================================================
+  # PHASE 2 — INFRASTRUCTURE PROVISIONING (TERRAFORM)
+  # Runs only after both test jobs pass
+  # ============================================================================
+
+  terraform:
+    name: "Phase 2 · Terraform Apply"
+    runs-on: ubuntu-latest
+    needs: [test-server, test-client]
+
+    # Expose Terraform outputs so downstream jobs can use resource names/URLs
+    outputs:
+      ecr_server_url:        ${{ steps.tf-out.outputs.ecr_server_url }}
+      ecr_client_url:        ${{ steps.tf-out.outputs.ecr_client_url }}
+      ecs_cluster_name:      ${{ steps.tf-out.outputs.ecs_cluster_name }}
+      ecs_server_svc:        ${{ steps.tf-out.outputs.ecs_server_svc }}
+      ecs_client_svc:        ${{ steps.tf-out.outputs.ecs_client_svc }}
+      eks_cluster_name:      ${{ steps.tf-out.outputs.eks_cluster_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # Bootstrap the S3 bucket used as the Terraform backend (idempotent)
+      - name: Bootstrap Terraform state bucket
+        run: |
+          BUCKET="${{ env.APP_NAME }}-tf-state-${{ github.repository_owner }}"
+          # Lowercase the bucket name (S3 requirement)
+          BUCKET=$(echo "$BUCKET" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+          echo "TF_STATE_BUCKET=$BUCKET" >> $GITHUB_ENV
+
+          # Create the bucket; ignore "already exists" errors
+          aws s3api create-bucket \
+            --bucket "$BUCKET" \
+            --region "${{ env.AWS_REGION }}" 2>/dev/null || true
+
+          # Enable versioning on the state bucket
+          aws s3api put-bucket-versioning \
+            --bucket "$BUCKET" \
+            --versioning-configuration Status=Enabled 2>/dev/null || true
+
+          # Block public access on the state bucket
+          aws s3api put-public-access-block \
+            --bucket "$BUCKET" \
+            --public-access-block-configuration \
+              "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" 2>/dev/null || true
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.APP_NAME }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: |
+          terraform plan \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="app_name=${{ env.APP_NAME }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+
+      # Capture all outputs into GitHub step outputs for downstream jobs
+      - name: Capture Terraform outputs
+        id: tf-out
+        working-directory: ./terraform
+        run: |
+          echo "ecr_server_url=$(terraform output -raw ecr_server_repository_url)" >> $GITHUB_OUTPUT
+          echo "ecr_client_url=$(terraform output -raw ecr_client_repository_url)"  >> $GITHUB_OUTPUT
+          echo "ecs_cluster_name=$(terraform output -raw ecs_cluster_name)"          >> $GITHUB_OUTPUT
+          echo "ecs_server_svc=$(terraform output -raw ecs_server_service_name)"     >> $GITHUB_OUTPUT
+          echo "ecs_client_svc=$(terraform output -raw ecs_client_service_name)"     >> $GITHUB_OUTPUT
+          echo "eks_cluster_name=$(terraform output -raw eks_cluster_name)"          >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # PHASE 3 — DOCKER BUILD + ECR PUSH + ECS FARGATE DEPLOY
+  # ============================================================================
+
+  build-and-deploy-ecs:
+    name: "Phase 3 · Docker Build & ECS Deploy"
+    runs-on: ubuntu-latest
+    needs: terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      # Authenticate Docker to ECR (session token aware)
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Server image ───────────────────────────────────────────────────────
+      - name: Build server Docker image
+        run: |
+          docker build \
+            --tag "${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}" \
+            --tag "${{ needs.terraform.outputs.ecr_server_url }}:latest" \
+            ./server
+
+      - name: Push server image to ECR
+        run: |
+          docker push "${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}"
+          docker push "${{ needs.terraform.outputs.ecr_server_url }}:latest"
+
+      # ── Client image ───────────────────────────────────────────────────────
+      - name: Build client Docker image
+        run: |
+          docker build \
+            --tag "${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}" \
+            --tag "${{ needs.terraform.outputs.ecr_client_url }}:latest" \
+            ./client
+
+      - name: Push client image to ECR
+        run: |
+          docker push "${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}"
+          docker push "${{ needs.terraform.outputs.ecr_client_url }}:latest"
+
+      # ── Register new task definition revisions with the immutable SHA tag ──
+      - name: Register new server task definition
+        id: server-task-def
+        run: |
+          # Fetch current task definition JSON, swap the image tag to SHA, register
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition "${{ env.APP_NAME }}-server" \
+            --query taskDefinition)
+
+          NEW_DEF=$(echo "$TASK_DEF" | \
+            jq --arg IMG "${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}" \
+               '.containerDefinitions[0].image = $IMG |
+                del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                    .compatibilities, .registeredAt, .registeredBy)')
+
+          REVISION=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_DEF" \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+          echo "arn=$REVISION" >> $GITHUB_OUTPUT
+
+      - name: Register new client task definition
+        id: client-task-def
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition "${{ env.APP_NAME }}-client" \
+            --query taskDefinition)
+
+          NEW_DEF=$(echo "$TASK_DEF" | \
+            jq --arg IMG "${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}" \
+               '.containerDefinitions[0].image = $IMG |
+                del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                    .compatibilities, .registeredAt, .registeredBy)')
+
+          REVISION=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_DEF" \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+          echo "arn=$REVISION" >> $GITHUB_OUTPUT
+
+      # ── Force new deployment with the updated task definitions ─────────────
+      - name: Deploy server to ECS Fargate
+        run: |
+          aws ecs update-service \
+            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
+            --service "${{ needs.terraform.outputs.ecs_server_svc }}" \
+            --task-definition "${{ steps.server-task-def.outputs.arn }}" \
+            --force-new-deployment
+
+      - name: Deploy client to ECS Fargate
+        run: |
+          aws ecs update-service \
+            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
+            --service "${{ needs.terraform.outputs.ecs_client_svc }}" \
+            --task-definition "${{ steps.client-task-def.outputs.arn }}" \
+            --force-new-deployment
+
+      # ── Wait until both services are stable (all tasks running & healthy) ──
+      - name: Verify server service is running
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
+            --services "${{ needs.terraform.outputs.ecs_server_svc }}"
+
+      - name: Verify client service is running
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
+            --services "${{ needs.terraform.outputs.ecs_client_svc }}"
+
+  # ============================================================================
+  # PHASE 4 — KUBERNETES DEPLOYMENT (EKS)
+  # ============================================================================
+
+  deploy-eks:
+    name: "Phase 4 · EKS Deployment"
+    runs-on: ubuntu-latest
+    needs: [terraform, build-and-deploy-ecs]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      # Install kubectl matching the cluster version
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.29.0"
+
+      # Write kubeconfig so kubectl can talk to the EKS cluster
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "${{ env.AWS_REGION }}" \
+            --name   "${{ needs.terraform.outputs.eks_cluster_name }}"
+
+      # Apply namespace first so subsequent resources have a target
+      - name: Create namespace
+        run: kubectl apply -f k8s/namespace.yaml
+
+      # Inject the ECR image URL with commit SHA before applying manifests
+      - name: Deploy server to EKS
+        run: |
+          sed "s|IMAGE_PLACEHOLDER|${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}|g" \
+            k8s/server-deployment.yaml | kubectl apply -f -
+          kubectl apply -f k8s/server-service.yaml
+
+      - name: Deploy client to EKS
+        run: |
+          sed "s|IMAGE_PLACEHOLDER|${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}|g" \
+            k8s/client-deployment.yaml | kubectl apply -f -
+          kubectl apply -f k8s/client-service.yaml
+
+      # Block until all pods are fully Running and ready
+      - name: Wait for server rollout
+        run: |
+          kubectl rollout status deployment/shopsmart-server \
+            --namespace shopsmart \
+            --timeout=300s
+
+      - name: Wait for client rollout
+        run: |
+          kubectl rollout status deployment/shopsmart-client \
+            --namespace shopsmart \
+            --timeout=300s
+
+      # Print the external endpoint URLs for quick reference in the job summary
+      - name: Print service endpoints
+        run: |
+          echo "=== ShopSmart EKS Service Endpoints ==="
+          kubectl get services --namespace shopsmart -o wide
