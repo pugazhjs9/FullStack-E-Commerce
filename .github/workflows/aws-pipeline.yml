@@ -98,15 +98,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-server, test-client]
 
-    # Expose Terraform outputs so downstream jobs can use resource names/URLs
-    outputs:
-      ecr_server_url:        ${{ steps.tf-out.outputs.ecr_server_url }}
-      ecr_client_url:        ${{ steps.tf-out.outputs.ecr_client_url }}
-      ecs_cluster_name:      ${{ steps.tf-out.outputs.ecs_cluster_name }}
-      ecs_server_svc:        ${{ steps.tf-out.outputs.ecs_server_svc }}
-      ecs_client_svc:        ${{ steps.tf-out.outputs.ecs_client_svc }}
-      eks_cluster_name:      ${{ steps.tf-out.outputs.eks_cluster_name }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -175,18 +166,6 @@ jobs:
         working-directory: ./terraform
         run: terraform apply -auto-approve tfplan
 
-      # Capture all outputs into GitHub step outputs for downstream jobs
-      - name: Capture Terraform outputs
-        id: tf-out
-        working-directory: ./terraform
-        run: |
-          echo "ecr_server_url=$(terraform output -raw ecr_server_repository_url)" >> $GITHUB_OUTPUT
-          echo "ecr_client_url=$(terraform output -raw ecr_client_repository_url)"  >> $GITHUB_OUTPUT
-          echo "ecs_cluster_name=$(terraform output -raw ecs_cluster_name)"          >> $GITHUB_OUTPUT
-          echo "ecs_server_svc=$(terraform output -raw ecs_server_service_name)"     >> $GITHUB_OUTPUT
-          echo "ecs_client_svc=$(terraform output -raw ecs_client_service_name)"     >> $GITHUB_OUTPUT
-          echo "eks_cluster_name=$(terraform output -raw eks_cluster_name)"          >> $GITHUB_OUTPUT
-
   # ============================================================================
   # PHASE 3 — DOCKER BUILD + ECR PUSH + ECS FARGATE DEPLOY
   # ============================================================================
@@ -207,48 +186,57 @@ jobs:
           aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region:            ${{ secrets.AWS_REGION }}
 
-      # Authenticate Docker to ECR (session token aware)
+      # Derive all resource identifiers from the AWS account ID — no terraform
+      # output piping needed because every name follows a deterministic pattern
+      - name: Resolve AWS resource identifiers
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+          echo "ECR_SERVER=${ECR_BASE}/${{ env.APP_NAME }}-server" >> $GITHUB_ENV
+          echo "ECR_CLIENT=${ECR_BASE}/${{ env.APP_NAME }}-client" >> $GITHUB_ENV
+          echo "ECS_CLUSTER=${{ env.APP_NAME }}-cluster"           >> $GITHUB_ENV
+          echo "ECS_SERVER_SVC=${{ env.APP_NAME }}-server-service" >> $GITHUB_ENV
+          echo "ECS_CLIENT_SVC=${{ env.APP_NAME }}-client-service" >> $GITHUB_ENV
+
       - name: Login to Amazon ECR
-        id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
       # ── Server image ───────────────────────────────────────────────────────
       - name: Build server Docker image
         run: |
           docker build \
-            --tag "${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}" \
-            --tag "${{ needs.terraform.outputs.ecr_server_url }}:latest" \
+            --tag "${{ env.ECR_SERVER }}:${{ github.sha }}" \
+            --tag "${{ env.ECR_SERVER }}:latest" \
             ./server
 
       - name: Push server image to ECR
         run: |
-          docker push "${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}"
-          docker push "${{ needs.terraform.outputs.ecr_server_url }}:latest"
+          docker push "${{ env.ECR_SERVER }}:${{ github.sha }}"
+          docker push "${{ env.ECR_SERVER }}:latest"
 
       # ── Client image ───────────────────────────────────────────────────────
       - name: Build client Docker image
         run: |
           docker build \
-            --tag "${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}" \
-            --tag "${{ needs.terraform.outputs.ecr_client_url }}:latest" \
+            --tag "${{ env.ECR_CLIENT }}:${{ github.sha }}" \
+            --tag "${{ env.ECR_CLIENT }}:latest" \
             ./client
 
       - name: Push client image to ECR
         run: |
-          docker push "${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}"
-          docker push "${{ needs.terraform.outputs.ecr_client_url }}:latest"
+          docker push "${{ env.ECR_CLIENT }}:${{ github.sha }}"
+          docker push "${{ env.ECR_CLIENT }}:latest"
 
-      # ── Register new task definition revisions with the immutable SHA tag ──
+      # ── Register new task definition revisions with the SHA-tagged image ───
       - name: Register new server task definition
         id: server-task-def
         run: |
-          # Fetch current task definition JSON, swap the image tag to SHA, register
           TASK_DEF=$(aws ecs describe-task-definition \
             --task-definition "${{ env.APP_NAME }}-server" \
             --query taskDefinition)
 
           NEW_DEF=$(echo "$TASK_DEF" | \
-            jq --arg IMG "${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}" \
+            jq --arg IMG "${{ env.ECR_SERVER }}:${{ github.sha }}" \
                '.containerDefinitions[0].image = $IMG |
                 del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
                     .compatibilities, .registeredAt, .registeredBy)')
@@ -267,7 +255,7 @@ jobs:
             --query taskDefinition)
 
           NEW_DEF=$(echo "$TASK_DEF" | \
-            jq --arg IMG "${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}" \
+            jq --arg IMG "${{ env.ECR_CLIENT }}:${{ github.sha }}" \
                '.containerDefinitions[0].image = $IMG |
                 del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
                     .compatibilities, .registeredAt, .registeredBy)')
@@ -278,35 +266,34 @@ jobs:
             --output text)
           echo "arn=$REVISION" >> $GITHUB_OUTPUT
 
-      # ── Force new deployment with the updated task definitions ─────────────
+      # ── Force new deployment and wait for stability ─────────────────────────
       - name: Deploy server to ECS Fargate
         run: |
           aws ecs update-service \
-            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
-            --service "${{ needs.terraform.outputs.ecs_server_svc }}" \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ env.ECS_SERVER_SVC }}" \
             --task-definition "${{ steps.server-task-def.outputs.arn }}" \
             --force-new-deployment
 
       - name: Deploy client to ECS Fargate
         run: |
           aws ecs update-service \
-            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
-            --service "${{ needs.terraform.outputs.ecs_client_svc }}" \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ env.ECS_CLIENT_SVC }}" \
             --task-definition "${{ steps.client-task-def.outputs.arn }}" \
             --force-new-deployment
 
-      # ── Wait until both services are stable (all tasks running & healthy) ──
       - name: Verify server service is running
         run: |
           aws ecs wait services-stable \
-            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
-            --services "${{ needs.terraform.outputs.ecs_server_svc }}"
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ env.ECS_SERVER_SVC }}"
 
       - name: Verify client service is running
         run: |
           aws ecs wait services-stable \
-            --cluster "${{ needs.terraform.outputs.ecs_cluster_name }}" \
-            --services "${{ needs.terraform.outputs.ecs_client_svc }}"
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ env.ECS_CLIENT_SVC }}"
 
   # ============================================================================
   # PHASE 4 — KUBERNETES DEPLOYMENT (EKS)
@@ -328,37 +315,41 @@ jobs:
           aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region:            ${{ secrets.AWS_REGION }}
 
-      # Install kubectl matching the cluster version
+      # Derive resource identifiers — same deterministic pattern as Phase 3
+      - name: Resolve AWS resource identifiers
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+          echo "ECR_SERVER=${ECR_BASE}/${{ env.APP_NAME }}-server" >> $GITHUB_ENV
+          echo "ECR_CLIENT=${ECR_BASE}/${{ env.APP_NAME }}-client" >> $GITHUB_ENV
+          echo "EKS_CLUSTER=${{ env.APP_NAME }}-eks"               >> $GITHUB_ENV
+
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
         with:
-          version: "v1.29.0"
+          version: "v1.32.0"
 
-      # Write kubeconfig so kubectl can talk to the EKS cluster
       - name: Configure kubeconfig
         run: |
           aws eks update-kubeconfig \
             --region "${{ env.AWS_REGION }}" \
-            --name   "${{ needs.terraform.outputs.eks_cluster_name }}"
+            --name   "${{ env.EKS_CLUSTER }}"
 
-      # Apply namespace first so subsequent resources have a target
       - name: Create namespace
         run: kubectl apply -f k8s/namespace.yaml
 
-      # Inject the ECR image URL with commit SHA before applying manifests
       - name: Deploy server to EKS
         run: |
-          sed "s|IMAGE_PLACEHOLDER|${{ needs.terraform.outputs.ecr_server_url }}:${{ github.sha }}|g" \
+          sed "s|IMAGE_PLACEHOLDER|${{ env.ECR_SERVER }}:${{ github.sha }}|g" \
             k8s/server-deployment.yaml | kubectl apply -f -
           kubectl apply -f k8s/server-service.yaml
 
       - name: Deploy client to EKS
         run: |
-          sed "s|IMAGE_PLACEHOLDER|${{ needs.terraform.outputs.ecr_client_url }}:${{ github.sha }}|g" \
+          sed "s|IMAGE_PLACEHOLDER|${{ env.ECR_CLIENT }}:${{ github.sha }}|g" \
             k8s/client-deployment.yaml | kubectl apply -f -
           kubectl apply -f k8s/client-service.yaml
 
-      # Block until all pods are fully Running and ready
       - name: Wait for server rollout
         run: |
           kubectl rollout status deployment/shopsmart-server \
@@ -371,7 +362,6 @@ jobs:
             --namespace shopsmart \
             --timeout=300s
 
-      # Print the external endpoint URLs for quick reference in the job summary
       - name: Print service endpoints
         run: |
           echo "=== ShopSmart EKS Service Endpoints ==="
