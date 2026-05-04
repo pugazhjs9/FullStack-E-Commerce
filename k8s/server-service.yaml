@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopsmart-server
+  namespace: shopsmart
+  labels:
+    app: shopsmart-server
+spec:
+  # LoadBalancer provisions an AWS NLB so the API is externally reachable
+  type: LoadBalancer
+  selector:
+    app: shopsmart-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5001
+      protocol: TCP
