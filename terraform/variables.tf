@@ -43,5 +43,5 @@ variable "eks_node_max" {
 variable "eks_version" {
   description = "Kubernetes version for the EKS cluster"
   type        = string
-  default     = "1.29"
+  default     = "1.32"
 }
