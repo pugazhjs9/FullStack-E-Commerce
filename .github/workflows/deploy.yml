@@ -27,9 +27,8 @@ jobs:
 
             echo '=== Pulling latest code ==='
             cd ~/FullStack-E-Commerce
-            git stash || true
-            git pull origin main
-            git stash pop || true
+            git fetch origin main
+            git reset --hard origin/main
 
             echo '=== Updating backend ==='
             cd server
