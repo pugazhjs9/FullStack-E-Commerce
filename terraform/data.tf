@@ -11,6 +11,28 @@ data "aws_subnets" "default" {
   }
 }
 
+# Only standard AZs — excludes opt-in zones (e.g. us-east-1e) that
+# do not support EKS control plane instance placement
+data "aws_availability_zones" "eks_supported" {
+  state = "available"
+  filter {
+    name   = "opt-in-status"
+    values = ["opt-in-not-required"]
+  }
+}
+
+# Subnets restricted to EKS-supported AZs only
+data "aws_subnets" "eks_safe" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+  filter {
+    name   = "availabilityZone"
+    values = data.aws_availability_zones.eks_supported.names
+  }
+}
+
 # Resolve the current account ID — used to construct ARNs
 data "aws_caller_identity" "current" {}
 
