@@ -163,19 +163,6 @@ jobs:
         working-directory: ./terraform
         run: terraform validate
 
-      # Destroy existing EKS resources so they can be recreated at the new version.
-      # EKS does not support skipping minor versions in-place (e.g. 1.29→1.32),
-      # so we must destroy and recreate. Other resources (S3, ECR, ECS) are unaffected.
-      - name: Destroy outdated EKS resources
-        working-directory: ./terraform
-        run: |
-          terraform destroy \
-            -target=aws_eks_node_group.main \
-            -target=aws_eks_cluster.main \
-            -auto-approve \
-            -var="aws_region=${{ env.AWS_REGION }}" \
-            -var="app_name=${{ env.APP_NAME }}" || true
-
       - name: Terraform Plan
         working-directory: ./terraform
         run: |
