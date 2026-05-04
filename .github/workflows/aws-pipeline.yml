@@ -40,10 +40,14 @@ jobs:
         run: npm ci
 
       - name: Run unit tests
-        run: npm run test:unit -- --json --outputFile=reports/unit-results.json
+        run: |
+          mkdir -p reports
+          npm run test:unit -- --json --outputFile=reports/unit-results.json
 
       - name: Run integration tests
-        run: npm run test:integration -- --json --outputFile=reports/integration-results.json --runInBand
+        run: |
+          mkdir -p reports
+          npm run test:integration -- --json --outputFile=reports/integration-results.json --runInBand
 
       - name: Upload test reports
         if: always()
@@ -72,7 +76,9 @@ jobs:
         run: npm ci
 
       - name: Run Vitest unit tests
-        run: npm run test -- --reporter=json --outputFile=reports/client-results.json
+        run: |
+          mkdir -p reports
+          npm run test -- --reporter=json --outputFile=reports/client-results.json
 
       - name: Upload test reports
         if: always()
