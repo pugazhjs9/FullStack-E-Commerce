@@ -5,7 +5,7 @@ resource "aws_eks_cluster" "main" {
   version  = var.eks_version
 
   vpc_config {
-    subnet_ids             = data.aws_subnets.default.ids
+    subnet_ids             = data.aws_subnets.eks_safe.ids
     security_group_ids     = [aws_security_group.eks_cluster.id]
     endpoint_public_access = true
   }
@@ -21,7 +21,7 @@ resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.app_name}-nodes"
   node_role_arn   = data.aws_iam_role.lab_role.arn
-  subnet_ids      = data.aws_subnets.default.ids
+  subnet_ids      = data.aws_subnets.eks_safe.ids
   instance_types  = [var.eks_node_instance_type]
 
   scaling_config {
