@@ -1,31 +1,31 @@
-# =============================================================================
-# Server Dockerfile — Development (Node 20 Bookworm Slim)
-# =============================================================================
-FROM node:20-bookworm-slim
+# ─── Stage 1: Install production dependencies only ───────────────────────────
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
-# Install openssl (required by Prisma on Debian) and wget (for healthcheck)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    openssl \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
+# ─── Stage 2: Lean production runtime ────────────────────────────────────────
+FROM node:20-alpine AS runtime
 WORKDIR /app
 
-# Copy package files first for better layer caching
-COPY package.json package-lock.json ./
-RUN npm ci
+# Install wget for healthcheck; clean up cache immediately
+RUN apk add --no-cache wget
 
-# Copy application source
+# Create non-root user before copying files
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Pull in production deps and application source from prior stages
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Copy and set permissions for entrypoint script
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Hand ownership to the non-root user
+RUN chown -R appuser:appgroup /app
+
+USER appuser
 
 EXPOSE 5001
 
-# Healthcheck via the existing /api/health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD wget -qO- http://localhost:5001/api/health || exit 1
 
-ENTRYPOINT ["entrypoint.sh"]
+CMD ["node", "src/index.js"]
