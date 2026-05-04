@@ -50,34 +50,3 @@ jobs:
             echo '=== Deploy complete ==='
           "
 
-      - name: Health Check
-        run: |
-          STATUS="000"
-          for attempt in 1 2 3; do
-            echo "Health check attempt $attempt/3..."
-            RESP=$(curl -s -o /dev/null -w "%{http_code}" \
-              "http://${{ secrets.EC2_HOST }}:5001/api/health" 2>/dev/null) || RESP="000"
-            echo "  → HTTP $RESP"
-            if [ "$RESP" = "200" ]; then
-              STATUS="200"
-              break
-            fi
-            sleep 8
-          done
-
-          if [ "$STATUS" = "200" ]; then
-            echo "✅ Health check PASSED"
-          else
-            # Warn only — EC2 may not be configured; ECS/EKS is the primary deploy target
-            echo "⚠️  Health check returned HTTP $RESP — EC2 may not be running or reachable"
-          fi
-
-      - name: Upload Logs on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: fail-logs-deploy
-          path: |
-            ~/.npm/_logs/
-            **/*.log
-          retention-days: 7
