@@ -122,6 +122,9 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+          # Disable the wrapper so `terraform output -raw` returns a plain value;
+          # the default wrapper injects extra stdout that corrupts variable capture
+          terraform_wrapper: false
 
       # Bootstrap the S3 bucket used as the Terraform backend (idempotent)
       - name: Bootstrap Terraform state bucket
