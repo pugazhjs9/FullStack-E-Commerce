@@ -1,14 +1,16 @@
 # ShopSmart — E-Commerce Application
 
-A modern, production-ready fullstack e-commerce application built with **React 18** and **Node.js/Express**, using JSON file-based storage. Features a complete CI/CD pipeline, automated testing suite, Docker support, and EC2 deployment automation.
+A modern, production-ready fullstack e-commerce application built with **React 18** and **Node.js/Express**, using JSON file-based storage. Features a complete CI/CD pipeline, automated testing suite, Docker support, and full AWS cloud deployment across **ECS Fargate** and **EKS**.
 
 ## 🚀 Live Demo & Deployments
 
-| Environment       | Platform        | URL                              |
-| ----------------- | --------------- | -------------------------------- |
-| Frontend (Static) | GitHub Pages    | Auto-deployed on merge to `main` |
-| Full Stack        | Render.com      | Configured via `render.yaml`     |
-| Self-hosted       | AWS EC2 + Nginx | Automated via GitHub Actions     |
+| Environment       | Platform            | URL                              |
+| ----------------- | ------------------- | -------------------------------- |
+| Frontend (Static) | GitHub Pages        | Auto-deployed on merge to `main` |
+| Full Stack        | Render.com          | Configured via `render.yaml`     |
+| Self-hosted       | AWS EC2 + Nginx     | Automated via GitHub Actions     |
+| Containers        | AWS ECS Fargate     | Deployed via `aws-pipeline.yml`  |
+| Kubernetes        | AWS EKS             | Deployed via `aws-pipeline.yml`  |
 
 ---
 
@@ -72,9 +74,13 @@ client/src/
 | Unit Tests        | Vitest (client), Jest (server)     | Component and route testing                   |
 | Integration Tests | Supertest + Jest                   | Real HTTP + real file I/O                     |
 | E2E Tests         | Playwright                         | Full browser user flow tests                  |
-| CI/CD             | GitHub Actions                     | Auto test + lint + deploy on push             |
-| Containers        | Docker + Docker Compose            | Reproducible local and production environment |
-| Deployment        | AWS EC2 + Nginx + PM2              | Production self-hosting                       |
+| CI/CD             | GitHub Actions                     | Auto test + provision + deploy on push        |
+| Containers        | Docker (multi-stage) + Compose     | Reproducible local and production environment |
+| Registry          | AWS ECR                            | Private container image registry              |
+| Compute (ECS)     | AWS ECS Fargate                    | Serverless container execution                |
+| Orchestration     | AWS EKS (Kubernetes 1.29)          | Production-grade container orchestration      |
+| Infrastructure    | Terraform 1.7                      | Infrastructure as Code — all AWS resources    |
+| Object Storage    | AWS S3                             | Versioned, encrypted app data + TF state      |
 
 ---
 
@@ -177,33 +183,20 @@ Unit Tests (Vitest + Jest)
 # ─── Server ───────────────────────────────────────────────────────
 cd server
 
-# All server tests
-npm test
-
-# Unit only
-npm run test:unit
-
-# Integration only (runs sequentially to avoid file conflicts)
-npm run test:integration
-
-# With coverage report
-npm run test:coverage
+npm test                  # All server tests
+npm run test:unit         # Unit only
+npm run test:integration  # Integration only (sequential)
+npm run test:coverage     # With coverage report
 
 # ─── Client ───────────────────────────────────────────────────────
 cd client
 
-# All client tests (Vitest)
-npm test
-
-# Watch mode
-npm run test:watch
+npm test                  # All client tests (Vitest)
+npm run test:watch        # Watch mode
 
 # ─── E2E (from project root) ──────────────────────────────────────
 # Ensure both dev servers are running first, then:
 npm run test:e2e
-
-# View HTML report
-npm run test:e2e:report
 
 # ─── All at once ──────────────────────────────────────────────────
 npm run test:all
@@ -211,34 +204,146 @@ npm run test:all
 
 ---
 
-## ⚙️ CI/CD Pipeline
+## ☁️ AWS Cloud Pipeline
 
-### Workflows Overview
+### Overview
+
+The `aws-pipeline.yml` GitHub Actions workflow implements a **fully automated, zero-touch** deployment pipeline across four sequential phases.
+
+```
+Push / PR to main
+      ↓
+Phase 1 — Tests (server + client in parallel)
+      ↓
+Phase 2 — Terraform Apply (S3, ECR, ECS, EKS)
+      ↓
+Phase 3 — Docker Build → ECR Push → ECS Fargate Deploy
+      ↓
+Phase 4 — EKS Deploy → Rollout Verification
+```
+
+### GitHub Secrets Required
+
+Configure these in **Settings → Secrets and Variables → Actions**:
+
+| Secret                  | Description                                     |
+| ----------------------- | ----------------------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | AWS Academy lab access key ID                   |
+| `AWS_SECRET_ACCESS_KEY` | AWS Academy lab secret access key               |
+| `AWS_SESSION_TOKEN`     | AWS Academy session token (refreshed each lab)  |
+| `AWS_REGION`            | Target region (e.g. `us-east-1`)                |
+
+### Phase 1 — Testing
+
+Both server and client test jobs run **in parallel**. The pipeline fails fast if any test fails before touching AWS resources.
+
+- **Server**: Jest unit + integration tests, reports uploaded as artifacts
+- **Client**: Vitest unit tests, reports uploaded as artifacts
+- Test report artifacts are retained for **14 days**
+
+### Phase 2 — Infrastructure Provisioning (Terraform)
+
+All AWS infrastructure is managed as code under `terraform/`. The pipeline:
+
+1. Bootstraps the Terraform state S3 bucket (idempotent — safe to re-run)
+2. Runs `terraform init` with the S3 backend injected via `-backend-config`
+3. Runs `terraform validate` → `terraform plan` → `terraform apply`
+
+**Resources provisioned:**
+
+| Resource              | Configuration                                                |
+| --------------------- | ------------------------------------------------------------ |
+| S3 Bucket             | Unique name, versioning enabled, AES-256 encryption, all public access blocked |
+| ECR (×2)              | `shopsmart-server` + `shopsmart-client`, scan on push, lifecycle policy (max 10 images) |
+| ECS Cluster           | Fargate + Fargate Spot capacity providers, Container Insights |
+| ECS Task Definitions  | Server (port 5001) + Client (port 8080), healthchecks, CloudWatch logs |
+| ECS Services          | 1 desired task each, awsvpc networking, public IP assigned   |
+| EKS Cluster           | Kubernetes 1.29, public endpoint, control-plane logs         |
+| EKS Node Group        | t3.small × 2 min/desired, 4 max, managed rolling updates     |
+| Security Groups       | ECS (ports 5001, 8080) + EKS control plane                  |
+| CloudWatch Log Group  | `/ecs/shopsmart`, 7-day retention                            |
+
+> **AWS Academy note:** All IAM roles reference the pre-existing `LabRole` — no new IAM roles or policies are created.
+
+### Phase 3 — Container Build & ECS Deployment
+
+1. Authenticates Docker to ECR using the `aws-actions/amazon-ecr-login` action
+2. Builds both images using the multi-stage Dockerfiles
+3. Pushes images tagged with both `latest` and the commit SHA
+4. Registers new ECS task definition revisions with the SHA-tagged image
+5. Calls `aws ecs update-service --force-new-deployment`
+6. Waits with `aws ecs wait services-stable` until all tasks are healthy
+
+**Dockerfile requirements satisfied:**
+
+| Requirement        | Implementation                                         |
+| ------------------ | ------------------------------------------------------ |
+| Multi-stage build  | `deps` + `runtime` stages (server), `builder` + `runtime` (client) |
+| Non-root user      | Server: `appuser` (UID 1000); Client: `nginx` (UID 101) |
+| Healthcheck        | `HEALTHCHECK` instruction on both images               |
+
+### Phase 4 — Kubernetes Deployment (EKS)
+
+1. Writes `~/.kube/config` via `aws eks update-kubeconfig`
+2. Applies `k8s/namespace.yaml` to create the `shopsmart` namespace
+3. Injects the SHA-tagged ECR URL via `sed` before applying manifests
+4. Runs `kubectl rollout status` with a 5-minute timeout to confirm stability
+5. Prints service endpoints in the job summary
+
+**Kubernetes requirements satisfied:**
+
+| Requirement            | Implementation                                              |
+| ---------------------- | ----------------------------------------------------------- |
+| Minimum 2 replicas     | `replicas: 2` in both Deployments                          |
+| Resource limits        | CPU + memory requests and limits on all containers         |
+| Liveness probe         | HTTP GET on health endpoint / root path                    |
+| Readiness probe        | HTTP GET on health endpoint / root path                    |
+| Non-default namespace  | `namespace: shopsmart` on all resources                    |
+
+---
+
+## ⚙️ Legacy CI/CD Workflows
 
 | Workflow                | Trigger                  | Purpose                                                              |
 | ----------------------- | ------------------------ | -------------------------------------------------------------------- |
+| `aws-pipeline.yml`      | push + PR to main        | **Full AWS pipeline** — test → terraform → ECS → EKS                |
 | `frontend-tests.yml`    | push + PR to main        | Lint → Format → Vitest → Playwright → Build                          |
-| `integration.yml`       | push + PR to main        | Node 18/20/22 matrix: lint, test, build; Slack notify                |
+| `integration.yml`       | push + PR to main        | Node 18/20/22 matrix: lint, test, build                             |
 | `ci.yml`                | push + PR (all branches) | Full CI: client + server build, test, format                         |
-| `deploy.yml`            | push to main             | SSH → EC2: git pull, npm ci, PM2 restart, Nginx reload, health check |
+| `deploy.yml`            | push to main             | SSH → EC2: git pull, npm ci, PM2 restart, Nginx reload              |
 | `gh-pages.yml`          | push to main             | Build Vite → deploy to GitHub Pages                                  |
 | `server_matrix.yml`     | manual                   | Node version compatibility check                                     |
 | `variables_secrets.yml` | manual                   | Demo: env variables and artifact management                          |
 | `recap.yml`             | manual                   | Demo: basic workflow concepts                                        |
 
-### CI/CD Flow Diagram
+---
 
-![CI/CD Pipeline](cicd_pipeline_diagram.svg)
+## 📁 Infrastructure File Layout
 
-
-### GitHub Secrets Required for Deployment
-
-| Secret              | Description                                                   |
-| ------------------- | ------------------------------------------------------------- |
-| `EC2_SSH_KEY`       | Private key content of the EC2 key pair (`.pem` file content) |
-| `EC2_USER`          | EC2 SSH username (e.g., `ec2-user` for Amazon Linux)          |
-| `EC2_HOST`          | EC2 public IP or domain                                       |
-| `SLACK_WEBHOOK_URL` | Slack webhook URL for CI notifications                        |
+```
+FullStack-E-Commerce/
+├── terraform/
+│   ├── main.tf             # Provider config + S3 backend (runtime-configured)
+│   ├── variables.tf        # All tunable variables with defaults
+│   ├── data.tf             # Default VPC, subnets, LabRole data sources
+│   ├── s3.tf               # App data S3 bucket (versioned, encrypted, private)
+│   ├── ecr.tf              # ECR repos + lifecycle policies
+│   ├── security_groups.tf  # ECS + EKS security groups
+│   ├── ecs.tf              # ECS cluster, task defs, services
+│   ├── eks.tf              # EKS cluster + managed node group
+│   └── outputs.tf          # All resource URLs/names exported
+├── k8s/
+│   ├── namespace.yaml          # shopsmart namespace
+│   ├── server-deployment.yaml  # 2 replicas, probes, resource limits
+│   ├── server-service.yaml     # LoadBalancer → port 5001
+│   ├── client-deployment.yaml  # 2 replicas, probes, resource limits
+│   └── client-service.yaml     # LoadBalancer → port 8080
+├── server/
+│   └── Dockerfile          # Multi-stage: deps → runtime (non-root appuser)
+└── client/
+    ├── Dockerfile           # Multi-stage: builder → nginx runtime (non-root)
+    └── nginx.conf           # SPA config on port 8080
+```
 
 ---
 
@@ -289,7 +394,7 @@ npm run test:all
 
 ---
 
-## ☁️ AWS EC2 Deployment
+## ☁️ AWS EC2 Deployment (Legacy)
 
 ### EC2 Scripts (`scripts/`)
 
@@ -319,8 +424,6 @@ npm install -g pm2
 # 4. Clone and configure
 git clone https://github.com/<your-username>/FullStack-E-Commerce.git ~/shopsmart
 cd ~/shopsmart/server && cp .env.example .env
-# Edit .env with production values
-nano .env
 
 # 5. Start the backend
 cd ~/shopsmart/server
@@ -392,8 +495,12 @@ Then hash in `authRoutes.js` at registration and compare at login.
 | CORS allowlist         | `ALLOWED_ORIGINS` env var — no wildcard `*`                     |
 | Auth middleware        | Token required on all cart/order endpoints                      |
 | Nginx security headers | `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection` |
-| Non-root Docker user   | Server container runs as `nodeuser` (UID 1001)                  |
+| Non-root Docker user   | Server: `appuser`; Client: `nginx` (UID 101)                   |
+| Multi-stage Docker     | No dev dependencies in production image                        |
 | npm ci in CI           | Uses lockfile — reproducible, no supply-chain drift             |
+| ECR scan on push       | Vulnerability scanning on every image push                     |
+| S3 encryption          | AES-256 SSE on all S3 objects                                  |
+| S3 public access block | All four public access block settings enabled                  |
 
 ---
 
