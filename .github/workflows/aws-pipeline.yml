@@ -120,7 +120,8 @@ jobs:
       # Bootstrap the S3 bucket used as the Terraform backend (idempotent)
       - name: Bootstrap Terraform state bucket
         run: |
-          BUCKET="${{ env.APP_NAME }}-tf-state-${{ github.repository_owner }}"
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="${{ env.APP_NAME }}-tf-state-${{ github.repository_owner }}-${ACCOUNT_ID}"
           # Lowercase the bucket name (S3 requirement)
           BUCKET=$(echo "$BUCKET" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
           echo "TF_STATE_BUCKET=$BUCKET" >> $GITHUB_ENV
