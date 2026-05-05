@@ -142,54 +142,6 @@ jobs:
             --public-access-block-configuration \
               "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" 2>/dev/null || true
 
-      - name: Cleanup orphaned AWS resources
-        run: |
-          CLUSTER="${{ env.APP_NAME }}-cluster"
-          SERVER_SVC="${{ env.APP_NAME }}-server-service"
-          CLIENT_SVC="${{ env.APP_NAME }}-client-service"
-
-          # ── Step 1: Force-delete ECS services ──────────────────────────────
-          echo "Deleting ECS services (if they exist)..."
-          aws ecs delete-service --cluster "$CLUSTER" --service "$SERVER_SVC" --force 2>/dev/null || true
-          aws ecs delete-service --cluster "$CLUSTER" --service "$CLIENT_SVC" --force 2>/dev/null || true
-
-          # ── Step 2: Wait until both services are fully gone (not DRAINING) ─
-          echo "Waiting for ECS services to finish draining..."
-          for SVC in "$SERVER_SVC" "$CLIENT_SVC"; do
-            for i in $(seq 1 40); do
-              STATUS=$(aws ecs describe-services \
-                --cluster "$CLUSTER" \
-                --services "$SVC" \
-                --query "services[0].status" \
-                --output text 2>/dev/null || echo "MISSING")
-              echo "  $SVC status: $STATUS (attempt $i/40)"
-              if [ "$STATUS" = "INACTIVE" ] || [ "$STATUS" = "MISSING" ] || [ "$STATUS" = "None" ]; then
-                echo "  $SVC is gone. Continuing."
-                break
-              fi
-              sleep 15
-            done
-          done
-
-          # ── Step 3: Clean up remaining orphaned resources ──────────────────
-          echo "Cleaning up ECR, log groups, and security groups..."
-          aws ecr delete-repository --repository-name ${{ env.APP_NAME }}-server --force 2>/dev/null || true
-          aws ecr delete-repository --repository-name ${{ env.APP_NAME }}-client --force 2>/dev/null || true
-          aws logs delete-log-group --log-group-name /ecs/${{ env.APP_NAME }} 2>/dev/null || true
-
-          for SG_NAME in "${{ env.APP_NAME }}-ecs-tasks-sg" "${{ env.APP_NAME }}-ecs-tasks-sg-v2"; do
-            SG_ID=$(aws ec2 describe-security-groups \
-              --filters "Name=group-name,Values=$SG_NAME" \
-              --query "SecurityGroups[0].GroupId" \
-              --output text 2>/dev/null || echo "")
-            if [ -n "$SG_ID" ] && [ "$SG_ID" != "None" ]; then
-              echo "  Deleting security group $SG_NAME ($SG_ID)..."
-              aws ec2 delete-security-group --group-id "$SG_ID" 2>/dev/null || true
-            fi
-          done
-
-          echo "Cleanup complete."
-
       - name: Terraform Init
         working-directory: ./terraform
         run: |
@@ -202,6 +154,67 @@ jobs:
       - name: Terraform Validate
         working-directory: ./terraform
         run: terraform validate
+
+      - name: Import existing AWS resources into Terraform state
+        working-directory: ./terraform
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REGION="${{ env.AWS_REGION }}"
+          APP="${{ env.APP_NAME }}"
+
+          # Helper: only import if not already in state
+          tf_import_if_missing() {
+            local addr=$1
+            local id=$2
+            if ! terraform state show "$addr" > /dev/null 2>&1; then
+              echo "Importing $addr ($id)..."
+              terraform import -var="aws_region=$REGION" -var="app_name=$APP" "$addr" "$id" 2>/dev/null || echo "  Skipped (resource may not exist yet)"
+            else
+              echo "  $addr already in state — skipping"
+            fi
+          }
+
+          # ECR repositories
+          tf_import_if_missing "aws_ecr_repository.server" "$APP-server"
+          tf_import_if_missing "aws_ecr_repository.client" "$APP-client"
+
+          # CloudWatch log group
+          tf_import_if_missing "aws_cloudwatch_log_group.ecs" "/ecs/$APP"
+
+          # ECS cluster
+          CLUSTER_ARN=$(aws ecs describe-clusters --clusters "$APP-cluster" \
+            --query "clusters[0].clusterArn" --output text 2>/dev/null || echo "")
+          if [ -n "$CLUSTER_ARN" ] && [ "$CLUSTER_ARN" != "None" ]; then
+            tf_import_if_missing "aws_ecs_cluster.main" "$APP-cluster"
+          fi
+
+          # ECS services
+          SERVER_SVC_STATUS=$(aws ecs describe-services \
+            --cluster "$APP-cluster" --services "$APP-server-service" \
+            --query "services[0].status" --output text 2>/dev/null || echo "")
+          if [ "$SERVER_SVC_STATUS" = "ACTIVE" ]; then
+            tf_import_if_missing "aws_ecs_service.server" "$APP-cluster/$APP-server-service"
+          fi
+
+          CLIENT_SVC_STATUS=$(aws ecs describe-services \
+            --cluster "$APP-cluster" --services "$APP-client-service" \
+            --query "services[0].status" --output text 2>/dev/null || echo "")
+          if [ "$CLIENT_SVC_STATUS" = "ACTIVE" ]; then
+            tf_import_if_missing "aws_ecs_service.client" "$APP-cluster/$APP-client-service"
+          fi
+
+          # Security group (check both v1 and v2 names)
+          for SG_NAME in "$APP-ecs-tasks-sg-v2" "$APP-ecs-tasks-sg"; do
+            SG_ID=$(aws ec2 describe-security-groups \
+              --filters "Name=group-name,Values=$SG_NAME" \
+              --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+            if [ -n "$SG_ID" ] && [ "$SG_ID" != "None" ]; then
+              tf_import_if_missing "aws_security_group.ecs_tasks" "$SG_ID"
+              break
+            fi
+          done
+
+          echo "Import step complete."
 
       - name: Terraform Plan
         working-directory: ./terraform
