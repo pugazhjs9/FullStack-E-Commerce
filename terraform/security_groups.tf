@@ -1,6 +1,6 @@
 # Security group shared by all ECS Fargate tasks
 resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.app_name}-ecs-tasks-sg"
+  name        = "${var.app_name}-ecs-tasks-sg-v2"
   description = "Inbound traffic to ECS Fargate tasks"
   vpc_id      = data.aws_vpc.default.id
 
