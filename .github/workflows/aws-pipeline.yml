@@ -142,6 +142,18 @@ jobs:
             --public-access-block-configuration \
               "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" 2>/dev/null || true
 
+      - name: Cleanup orphaned AWS resources (Temporary Fix)
+        run: |
+          echo "Cleaning up orphaned resources..."
+          aws ecr delete-repository --repository-name shopsmart-server --force 2>/dev/null || true
+          aws ecr delete-repository --repository-name shopsmart-client --force 2>/dev/null || true
+          aws logs delete-log-group --log-group-name /ecs/shopsmart 2>/dev/null || true
+          
+          SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=shopsmart-ecs-tasks-sg --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+          if [ "$SG_ID" != "None" ] && [ -n "$SG_ID" ]; then
+            aws ec2 delete-security-group --group-id $SG_ID 2>/dev/null || true
+          fi
+
       - name: Terraform Init
         working-directory: ./terraform
         run: |
