@@ -217,42 +217,6 @@ jobs:
             fi
           done
 
-          # ── ALB security group ────────────────────────────────────────────────
-          ALB_SG_ID=$(aws ec2 describe-security-groups \
-            --filters "Name=group-name,Values=$APP-alb-sg" \
-            --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
-          if [ -n "$ALB_SG_ID" ] && [ "$ALB_SG_ID" != "None" ]; then
-            tf_import_if_missing "aws_security_group.alb" "$ALB_SG_ID"
-          fi
-
-          # ── ALB + target groups + listener + rule ────────────────────────────
-          ALB_ARN=$(aws elbv2 describe-load-balancers --names "$APP-alb" \
-            --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null || echo "")
-          if [ -n "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
-            tf_import_if_missing "aws_lb.main" "$ALB_ARN"
-
-            SERVER_TG_ARN=$(aws elbv2 describe-target-groups --names "$APP-server-tg" \
-              --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null || echo "")
-            [ -n "$SERVER_TG_ARN" ] && [ "$SERVER_TG_ARN" != "None" ] && \
-              tf_import_if_missing "aws_lb_target_group.server" "$SERVER_TG_ARN"
-
-            CLIENT_TG_ARN=$(aws elbv2 describe-target-groups --names "$APP-client-tg" \
-              --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null || echo "")
-            [ -n "$CLIENT_TG_ARN" ] && [ "$CLIENT_TG_ARN" != "None" ] && \
-              tf_import_if_missing "aws_lb_target_group.client" "$CLIENT_TG_ARN"
-
-            LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" \
-              --query "Listeners[0].ListenerArn" --output text 2>/dev/null || echo "")
-            if [ -n "$LISTENER_ARN" ] && [ "$LISTENER_ARN" != "None" ]; then
-              tf_import_if_missing "aws_lb_listener.http" "$LISTENER_ARN"
-
-              RULE_ARN=$(aws elbv2 describe-rules --listener-arn "$LISTENER_ARN" \
-                --query "Rules[?Priority=='10'].RuleArn | [0]" --output text 2>/dev/null || echo "")
-              [ -n "$RULE_ARN" ] && [ "$RULE_ARN" != "None" ] && \
-                tf_import_if_missing "aws_lb_listener_rule.api" "$RULE_ARN"
-            fi
-          fi
-
           echo "Import step complete."
 
       - name: Terraform Plan

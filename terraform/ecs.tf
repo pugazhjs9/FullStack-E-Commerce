@@ -122,16 +122,7 @@ resource "aws_ecs_service" "server" {
     assign_public_ip = true
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.server.arn
-    container_name   = "${var.app_name}-server"
-    container_port   = 5001
-  }
-
-  health_check_grace_period_seconds = 60
-
-  depends_on = [aws_lb_listener.http]
-
+  # Allow CI/CD force-deploys to update the task definition revision freely
   lifecycle {
     ignore_changes = [task_definition]
   }
@@ -149,16 +140,6 @@ resource "aws_ecs_service" "client" {
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = true
   }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.client.arn
-    container_name   = "${var.app_name}-client"
-    container_port   = 8080
-  }
-
-  health_check_grace_period_seconds = 60
-
-  depends_on = [aws_lb_listener.http]
 
   lifecycle {
     ignore_changes = [task_definition]
