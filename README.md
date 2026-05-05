@@ -1,6 +1,6 @@
 # ShopSmart — E-Commerce Application
 
-A modern, production-ready fullstack e-commerce application built with **React 18** and **Node.js/Express**, using JSON file-based storage. Features a complete CI/CD pipeline, automated testing suite, Docker support, and full AWS cloud deployment across **ECS Fargate** and **EKS**.
+A modern, production-ready fullstack e-commerce application built with **React 18** and **Node.js/Express**, using JSON file-based storage. Features a complete CI/CD pipeline, automated testing suite, Docker support, and full AWS cloud deployment on **ECS Fargate**.
 
 ## 🚀 Live Demo & Deployments
 
@@ -10,7 +10,6 @@ A modern, production-ready fullstack e-commerce application built with **React 1
 | Full Stack        | Render.com          | Configured via `render.yaml`     |
 | Self-hosted       | AWS EC2 + Nginx     | Automated via GitHub Actions     |
 | Containers        | AWS ECS Fargate     | Deployed via `aws-pipeline.yml`  |
-| Kubernetes        | AWS EKS             | Deployed via `aws-pipeline.yml`  |
 
 ---
 
@@ -78,7 +77,6 @@ client/src/
 | Containers        | Docker (multi-stage) + Compose     | Reproducible local and production environment |
 | Registry          | AWS ECR                            | Private container image registry              |
 | Compute (ECS)     | AWS ECS Fargate                    | Serverless container execution                |
-| Orchestration     | AWS EKS (Kubernetes 1.29)          | Production-grade container orchestration      |
 | Infrastructure    | Terraform 1.7                      | Infrastructure as Code — all AWS resources    |
 | Object Storage    | AWS S3                             | Versioned, encrypted app data + TF state      |
 
@@ -215,11 +213,9 @@ Push / PR to main
       ↓
 Phase 1 — Tests (server + client in parallel)
       ↓
-Phase 2 — Terraform Apply (S3, ECR, ECS, EKS)
+Phase 2 — Terraform Apply (S3, ECR, ECS)
       ↓
 Phase 3 — Docker Build → ECR Push → ECS Fargate Deploy
-      ↓
-Phase 4 — EKS Deploy → Rollout Verification
 ```
 
 ### GitHub Secrets Required
@@ -258,9 +254,7 @@ All AWS infrastructure is managed as code under `terraform/`. The pipeline:
 | ECS Cluster           | Fargate + Fargate Spot capacity providers, Container Insights |
 | ECS Task Definitions  | Server (port 5001) + Client (port 8080), healthchecks, CloudWatch logs |
 | ECS Services          | 1 desired task each, awsvpc networking, public IP assigned   |
-| EKS Cluster           | Kubernetes 1.29, public endpoint, control-plane logs         |
-| EKS Node Group        | t3.small × 2 min/desired, 4 max, managed rolling updates     |
-| Security Groups       | ECS (ports 5001, 8080) + EKS control plane                  |
+| Security Groups       | ECS (ports 5001, 8080)                                      |
 | CloudWatch Log Group  | `/ecs/shopsmart`, 7-day retention                            |
 
 > **AWS Academy note:** All IAM roles reference the pre-existing `LabRole` — no new IAM roles or policies are created.
@@ -282,31 +276,11 @@ All AWS infrastructure is managed as code under `terraform/`. The pipeline:
 | Non-root user      | Server: `appuser` (UID 1000); Client: `nginx` (UID 101) |
 | Healthcheck        | `HEALTHCHECK` instruction on both images               |
 
-### Phase 4 — Kubernetes Deployment (EKS)
-
-1. Writes `~/.kube/config` via `aws eks update-kubeconfig`
-2. Applies `k8s/namespace.yaml` to create the `shopsmart` namespace
-3. Injects the SHA-tagged ECR URL via `sed` before applying manifests
-4. Runs `kubectl rollout status` with a 5-minute timeout to confirm stability
-5. Prints service endpoints in the job summary
-
-**Kubernetes requirements satisfied:**
-
-| Requirement            | Implementation                                              |
-| ---------------------- | ----------------------------------------------------------- |
-| Minimum 2 replicas     | `replicas: 2` in both Deployments                          |
-| Resource limits        | CPU + memory requests and limits on all containers         |
-| Liveness probe         | HTTP GET on health endpoint / root path                    |
-| Readiness probe        | HTTP GET on health endpoint / root path                    |
-| Non-default namespace  | `namespace: shopsmart` on all resources                    |
-
----
-
 ## ⚙️ Legacy CI/CD Workflows
 
 | Workflow                | Trigger                  | Purpose                                                              |
 | ----------------------- | ------------------------ | -------------------------------------------------------------------- |
-| `aws-pipeline.yml`      | push + PR to main        | **Full AWS pipeline** — test → terraform → ECS → EKS                |
+| `aws-pipeline.yml`      | push + PR to main        | **Full AWS pipeline** — test → terraform → ECS                      |
 | `frontend-tests.yml`    | push + PR to main        | Lint → Format → Vitest → Playwright → Build                          |
 | `integration.yml`       | push + PR to main        | Node 18/20/22 matrix: lint, test, build                             |
 | `ci.yml`                | push + PR (all branches) | Full CI: client + server build, test, format                         |
@@ -328,16 +302,9 @@ FullStack-E-Commerce/
 │   ├── data.tf             # Default VPC, subnets, LabRole data sources
 │   ├── s3.tf               # App data S3 bucket (versioned, encrypted, private)
 │   ├── ecr.tf              # ECR repos + lifecycle policies
-│   ├── security_groups.tf  # ECS + EKS security groups
+│   ├── security_groups.tf  # ECS security groups
 │   ├── ecs.tf              # ECS cluster, task defs, services
-│   ├── eks.tf              # EKS cluster + managed node group
 │   └── outputs.tf          # All resource URLs/names exported
-├── k8s/
-│   ├── namespace.yaml          # shopsmart namespace
-│   ├── server-deployment.yaml  # 2 replicas, probes, resource limits
-│   ├── server-service.yaml     # LoadBalancer → port 5001
-│   ├── client-deployment.yaml  # 2 replicas, probes, resource limits
-│   └── client-service.yaml     # LoadBalancer → port 8080
 ├── server/
 │   └── Dockerfile          # Multi-stage: deps → runtime (non-root appuser)
 └── client/
