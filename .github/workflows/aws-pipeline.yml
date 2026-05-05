@@ -221,12 +221,14 @@ jobs:
         run: |
           terraform plan \
             -var="aws_region=${{ env.AWS_REGION }}" \
-            -var="app_name=${{ env.APP_NAME }}" \
-            -out=tfplan
+            -var="app_name=${{ env.APP_NAME }}"
 
       - name: Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve tfplan
+        run: |
+          terraform apply -auto-approve \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="app_name=${{ env.APP_NAME }}"
 
   # ============================================================================
   # PHASE 3 — DOCKER BUILD + ECR PUSH + ECS FARGATE DEPLOY
