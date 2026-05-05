@@ -145,11 +145,13 @@ jobs:
       - name: Cleanup orphaned AWS resources (Temporary Fix)
         run: |
           echo "Cleaning up orphaned resources..."
-          aws ecr delete-repository --repository-name shopsmart-server --force 2>/dev/null || true
-          aws ecr delete-repository --repository-name shopsmart-client --force 2>/dev/null || true
-          aws logs delete-log-group --log-group-name /ecs/shopsmart 2>/dev/null || true
+          aws ecs delete-service --cluster ${{ env.APP_NAME }}-cluster --service ${{ env.APP_NAME }}-server-service --force 2>/dev/null || true
+          aws ecs delete-service --cluster ${{ env.APP_NAME }}-cluster --service ${{ env.APP_NAME }}-client-service --force 2>/dev/null || true
+          aws ecr delete-repository --repository-name ${{ env.APP_NAME }}-server --force 2>/dev/null || true
+          aws ecr delete-repository --repository-name ${{ env.APP_NAME }}-client --force 2>/dev/null || true
+          aws logs delete-log-group --log-group-name /ecs/${{ env.APP_NAME }} 2>/dev/null || true
           
-          SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=shopsmart-ecs-tasks-sg --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
+          SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=${{ env.APP_NAME }}-ecs-tasks-sg --query "SecurityGroups[0].GroupId" --output text 2>/dev/null || echo "")
           if [ "$SG_ID" != "None" ] && [ -n "$SG_ID" ]; then
             aws ec2 delete-security-group --group-id $SG_ID 2>/dev/null || true
           fi
