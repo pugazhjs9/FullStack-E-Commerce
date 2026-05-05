@@ -28,15 +28,6 @@ output "ecs_client_service_name" {
   value       = aws_ecs_service.client.name
 }
 
-output "eks_cluster_name" {
-  description = "EKS cluster name"
-  value       = aws_eks_cluster.main.name
-}
-
-output "eks_cluster_endpoint" {
-  description = "EKS API server endpoint"
-  value       = aws_eks_cluster.main.endpoint
-}
 
 output "aws_account_id" {
   description = "AWS account ID"

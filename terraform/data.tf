@@ -17,15 +17,7 @@ data "aws_subnet" "default_each" {
   id       = each.value
 }
 
-locals {
-  # EKS rejects subnets in us-east-1e (and any AZ ending in 'e') because
-  # those AZs don't support EKS control plane instances. Filter them out here.
-  # ECS uses the full default subnet list and is unaffected.
-  eks_subnet_ids = [
-    for s in data.aws_subnet.default_each : s.id
-    if !endswith(s.availability_zone, "e")
-  ]
-}
+
 
 # Resolve the current account ID — used to construct ARNs
 data "aws_caller_identity" "current" {}
