@@ -28,6 +28,10 @@ output "ecs_client_service_name" {
   value       = aws_ecs_service.client.name
 }
 
+output "alb_dns_name" {
+  description = "Public DNS of the Application Load Balancer — use this URL to access the app"
+  value       = "http://${aws_lb.main.dns_name}"
+}
 
 output "aws_account_id" {
   description = "AWS account ID"

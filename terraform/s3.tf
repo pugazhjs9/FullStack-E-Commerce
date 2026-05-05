@@ -1,10 +1,6 @@
-# Random suffix keeps the bucket name globally unique across runs
-resource "random_id" "bucket_suffix" {
-  byte_length = 4
-}
-
+# Bucket name is deterministic per AWS account — same name every run, no duplicates
 resource "aws_s3_bucket" "app_data" {
-  bucket        = "${var.app_name}-app-data-${random_id.bucket_suffix.hex}"
+  bucket        = "${var.app_name}-app-data-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
 }
 
