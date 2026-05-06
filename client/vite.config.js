@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig(({ command, mode }) => ({
-  base: command === "build" ? "/FullStack-E-Commerce/" : "/",
+  base: "/",
   plugins: [react()],
   css: mode === "test" ? false : undefined,
   server: {
