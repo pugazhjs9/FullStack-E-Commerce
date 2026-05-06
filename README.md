@@ -1,4 +1,4 @@
-# ShopSmart — E-Commerce Application!!!
+# ShopSmart — E-Commerce Application
 
 A modern, production-ready fullstack e-commerce application built with **React 18** and **Node.js/Express**, using JSON file-based storage. Features a complete CI/CD pipeline, automated testing suite, Docker support, and full AWS cloud deployment on **ECS Fargate**.
 
