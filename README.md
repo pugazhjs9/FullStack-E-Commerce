@@ -15,20 +15,83 @@ A modern, production-ready fullstack e-commerce application built with **React 1
 
 ## 🏗️ System Architecture
 
-![System Architecture](client_backend_architecture.svg)
+ShopSmart is made of two deployable units:
 
-### Data Flow (Shopping Cart Example)
+- **`client/`** — a React 18 single-page app. Vite builds it into static files, which nginx serves in production.
+- **`server/`** — an Express 4 REST API mounted under `/api/*`. It has no database: all data lives in JSON files on the server's own disk (`server/src/data/`).
+
+The browser loads the SPA once, then the SPA talks to the API with `fetch`. In production both sit behind a single Application Load Balancer, so the browser sees one origin.
+
+### Production on AWS (ECS Fargate + ALB)
+
+```mermaid
+flowchart LR
+    user([Browser])
+
+    subgraph aws["AWS · default VPC"]
+        alb["Application Load Balancer<br/>shopsmart-alb · HTTP :80"]
+
+        subgraph ecs["ECS cluster · shopsmart-cluster · Fargate"]
+            client["shopsmart-client-service<br/>nginx :8080<br/>Vite build + SPA fallback"]
+            server["shopsmart-server-service<br/>Node 20 + Express :5001"]
+            data[("JSON files<br/>/app/src/data<br/>container disk")]
+        end
+
+        ecr[("ECR<br/>shopsmart-server<br/>shopsmart-client")]
+        cw["CloudWatch Logs<br/>/ecs/shopsmart"]
+        s3[("S3 shopsmart-app-data-*<br/>provisioned, not used by the app")]
+    end
+
+    user -->|"pages and assets"| alb
+    user -->|"fetch /api/*"| alb
+    alb -->|"default action → client TG"| client
+    alb -->|"rule priority 10: /api/* → server TG"| server
+    server -->|"readFileSync / writeFileSync"| data
+    ecr -. image pull .-> client
+    ecr -. image pull .-> server
+    client -. logs .-> cw
+    server -. logs .-> cw
+```
+
+| Request path  | ALB listener (port 80) | Target group (health check)                 | Handled by                                                     |
+| ------------- | ---------------------- | ------------------------------------------- | -------------------------------------------------------------- |
+| `/api/*`      | Rule, priority 10      | `shopsmart-server-tg` :5001 (`/api/health`) | Express API                                                    |
+| Anything else | Default action         | `shopsmart-client-tg` :8080 (`/`)           | nginx: serves the file, or `index.html` for client-side routes |
+
+What this means in practice:
+
+- **API calls are same-origin.** The client image is built without `VITE_API_URL`, so `api.js` calls relative paths such as `/api/cart`. Those go back to the ALB, which forwards them to the server. nginx never proxies the API; the ALB does all the routing.
+- **Only the ALB is reachable from the internet.** The ALB security group allows port 80 from anywhere. The ECS tasks security group allows 5001 and 8080 **only from the ALB security group**. Tasks run in the default VPC's public subnets with public IPs, which they need to pull images from ECR because there is no NAT gateway.
+- **Data is per-task and is reset on every deploy.** `dataUtils.js` reads and writes `src/data/*.json` inside the running container. When a new task starts (redeploy or restart), it begins again from the JSON files baked into the image. The server service runs with `desired_count = 1`. With more tasks, each one would have its own separate copy of the data. Terraform creates an S3 app-data bucket, but the server doesn't use it yet (it has no AWS SDK dependency).
+- **IAM**: both the task role and the execution role are the AWS Academy `LabRole`. Terraform creates no IAM resources.
+
+### Local Development
+
+```mermaid
+flowchart LR
+    browser([Browser]) -->|"localhost:5173"| vite["Vite dev server :5173<br/>React + HMR"]
+    vite -->|"proxy /api/* → localhost:5001"| api["Express :5001<br/>nodemon"]
+    api -->|"fs read/write"| files[("server/src/data/*.json")]
+```
+
+`./run.sh` starts both processes. `VITE_API_URL` is left empty, so the SPA calls relative `/api/*` paths, and the dev-server proxy in `client/vite.config.js` forwards them to Express.
+
+### Request Lifecycle (Add to Cart)
 
 ```
-User clicks "Add to Cart"
-  → ProductDetail.jsx calls cartApi.add(productId, quantity)
-    → api.js fetchApi('/api/cart', { method: 'POST', ... })
-      → Express cartRoutes.js reads auth token
-        → reads carts.json, appends item
-          → writes updated carts.json
-            → returns updated cart to client
-              → CartContext refreshCart() updates global state
-                → Navbar cart badge re-renders with new count
+User clicks "Add to Cart" (ProductDetail.jsx or ProductCard.jsx)
+  → CartContext.addToCart(productId, quantity)
+    → api.js cartApi.add() → fetchApi('/api/cart', { method: 'POST' })
+        header: Authorization: Bearer token_<userId>_<timestamp>   (read from localStorage)
+      → prod: ALB matches /api/* → server target group
+        dev:  Vite proxy → localhost:5001
+        → cartRoutes.js POST /  — parses userId out of the token
+          → readData('products.json')  — 404 if the product doesn't exist
+          → readData('carts.json') → add item or bump quantity → writeData('carts.json')
+          → 200 { message, cart }
+    → CartContext.fetchCart() → GET /api/cart
+        → server joins cart items with products.json, computes itemCount + subtotal
+      → setCart() → Navbar cart badge re-renders with the new count
 ```
 
 ### Frontend Architecture
@@ -58,6 +121,38 @@ client/src/
     └── api.js             # Centralised fetch wrapper + all API calls
 ```
 
+The component tree is `main.jsx` → `ErrorBoundary` → `App` → `BrowserRouter` → `AuthProvider` → `CartProvider` → `Navbar` / `Routes` / `Footer`. `ProtectedRoute` wraps `/cart`, `/checkout`, `/orders` and `/orders/:id`. `AuthProvider` stores the token in `localStorage` and checks it on load with `GET /api/auth/me`. `CartProvider` fetches the cart again whenever the user changes.
+
+### Backend Architecture
+
+```
+server/src/
+├── index.js               # Loads .env, starts the app on PORT (default 5001)
+├── app.js                 # Express app: CORS, JSON body parser, /api/health,
+│                          #   route mounting, 404 + error handlers
+├── routes/
+│   ├── authRoutes.js      # /api/auth     — register, login, me
+│   ├── productRoutes.js   # /api/products — list/filter/search/sort, categories, CRUD
+│   ├── cartRoutes.js      # /api/cart     — per-user cart (token required)
+│   └── orderRoutes.js     # /api/orders   — create from cart, list, get, update status
+├── utils/
+│   └── dataUtils.js       # readData / writeData / generateId (synchronous fs on src/data)
+└── data/                  # products.json, users.json, carts.json, orders.json
+```
+
+There is no shared auth middleware. `cartRoutes.js` and `orderRoutes.js` each read the user ID straight out of the `token_<userId>_<timestamp>` bearer token, and `GET /api/auth/me` looks that ID up in `users.json`. Tokens are not signed, so anyone can create a valid-looking one.
+
+### Deployment Targets
+
+The same two units are deployed four ways. They differ in how the SPA reaches the API and where data is stored:
+
+| Target                                   | Frontend served by                                        | How the SPA reaches the API                                                 | Where data lives                                                                 |
+| ---------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| AWS ECS Fargate (`aws-pipeline.yml`)     | nginx container behind the ALB                            | Same origin: the ALB routes `/api/*` to the server                          | Container disk; reset on every redeploy                                          |
+| AWS EC2 (`deploy.yml`)                   | Host nginx from `/var/www/FullStack-E-Commerce/client/dist` | Through the instance's nginx config (kept on the server, not in this repo) | `server/src/data` in the checkout; the deploy's `git reset --hard` resets it     |
+| Render (`render.yaml`)                   | Render static site                                        | Cross-origin: `VITE_API_URL` is set to the backend service URL at build time | Web service's ephemeral disk                                                     |
+| GitHub Pages (`gh-pages.yml`)            | GitHub Pages                                              | Not configured: built without `VITE_API_URL`, so there's no backend to call | None (UI-only build)                                                              |
+
 ---
 
 ## 🛠️ Tech Stack
@@ -77,8 +172,9 @@ client/src/
 | Containers        | Docker (multi-stage) + Compose     | Reproducible local and production environment |
 | Registry          | AWS ECR                            | Private container image registry              |
 | Compute (ECS)     | AWS ECS Fargate                    | Serverless container execution                |
+| Load Balancer     | AWS Application Load Balancer      | Single public entry point; `/api/*` → server, rest → client |
 | Infrastructure    | Terraform 1.7                      | Infrastructure as Code — all AWS resources    |
-| Object Storage    | AWS S3                             | Versioned, encrypted app data + TF state      |
+| Object Storage    | AWS S3                             | Terraform remote state; versioned, encrypted app-data bucket (provisioned, not yet used by the API) |
 
 ---
 
@@ -206,14 +302,14 @@ npm run test:all
 
 ### Overview
 
-The `aws-pipeline.yml` GitHub Actions workflow implements a **fully automated, zero-touch** deployment pipeline across four sequential phases.
+The `aws-pipeline.yml` GitHub Actions workflow implements a **fully automated, zero-touch** deployment pipeline across three sequential phases.
 
 ```
 Push / PR to main
       ↓
 Phase 1 — Tests (server + client in parallel)
       ↓
-Phase 2 — Terraform Apply (S3, ECR, ECS)
+Phase 2 — Terraform Apply (S3, ECR, ALB, ECS)
       ↓
 Phase 3 — Docker Build → ECR Push → ECS Fargate Deploy
 ```
@@ -243,7 +339,9 @@ All AWS infrastructure is managed as code under `terraform/`. The pipeline:
 
 1. Bootstraps the Terraform state S3 bucket (idempotent — safe to re-run)
 2. Runs `terraform init` with the S3 backend injected via `-backend-config`
-3. Runs `terraform validate` → `terraform plan` → `terraform apply`
+3. Runs `terraform validate`
+4. Waits for any `DRAINING` ECS services to finish, then runs `terraform import` on resources that already exist in AWS but are missing from state (S3, ECR, log group, cluster, services, security groups, target groups, ALB, listener, rule). This lets re-runs succeed instead of failing with "already exists" errors.
+5. Runs `terraform plan` → `terraform apply`
 
 **Resources provisioned:**
 
@@ -253,8 +351,10 @@ All AWS infrastructure is managed as code under `terraform/`. The pipeline:
 | ECR (×2)              | `shopsmart-server` + `shopsmart-client`, scan on push, lifecycle policy (max 10 images) |
 | ECS Cluster           | Fargate + Fargate Spot capacity providers, Container Insights |
 | ECS Task Definitions  | Server (port 5001) + Client (port 8080), healthchecks, CloudWatch logs |
-| ECS Services          | 1 desired task each, awsvpc networking, public IP assigned   |
-| Security Groups       | ECS (ports 5001, 8080)                                      |
+| ECS Services          | 1 desired task each, awsvpc networking, public IP assigned, registered with its ALB target group |
+| Application Load Balancer | Internet-facing, HTTP :80 listener; default action → client TG, `/api/*` rule (priority 10) → server TG |
+| Target Groups (×2)    | `shopsmart-server-tg` :5001 (health `/api/health`), `shopsmart-client-tg` :8080 (health `/`), target type `ip` |
+| Security Groups       | ALB SG (port 80 from internet); ECS tasks SG (5001, 8080 from the ALB SG only) |
 | CloudWatch Log Group  | `/ecs/shopsmart`, 7-day retention                            |
 
 > **AWS Academy note:** All IAM roles reference the pre-existing `LabRole` — no new IAM roles or policies are created.
@@ -302,8 +402,9 @@ FullStack-E-Commerce/
 │   ├── data.tf             # Default VPC, subnets, LabRole data sources
 │   ├── s3.tf               # App data S3 bucket (versioned, encrypted, private)
 │   ├── ecr.tf              # ECR repos + lifecycle policies
-│   ├── security_groups.tf  # ECS security groups
-│   ├── ecs.tf              # ECS cluster, task defs, services
+│   ├── alb.tf              # ALB, HTTP listener + /api/* rule, target groups, ALB security group
+│   ├── security_groups.tf  # ECS tasks security group (ingress from ALB only)
+│   ├── ecs.tf              # ECS cluster, task defs, services (attached to ALB target groups)
 │   └── outputs.tf          # All resource URLs/names exported
 ├── server/
 │   └── Dockerfile          # Multi-stage: deps → runtime (non-root appuser)
