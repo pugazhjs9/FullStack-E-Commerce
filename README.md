@@ -182,7 +182,7 @@ The same two units are deployed four ways. They differ in how the SPA reaches th
 
 ### Prerequisites
 
-- Node.js 18+ (`node --version`)
+- Node.js 20.19+ or 22.12+ (`node --version`) — required by Vite 8
 - npm 8+ (`npm --version`)
 - Docker + Docker Compose (optional, for containerised setup)
 
@@ -191,17 +191,12 @@ The same two units are deployed four ways. They differ in how the SPA reaches th
 ### ⚡ Quick Start (Recommended)
 
 ```bash
-# 1. Clone
-git clone https://github.com/<your-username>/FullStack-E-Commerce.git
+git clone https://github.com/pugazhjs9/FullStack-E-Commerce.git
 cd FullStack-E-Commerce
-
-# 2. Setup env files
-cp server/.env.example server/.env
-cp client/.env.example client/.env.local
-
-# 3. Run everything
-chmod +x run.sh && ./run.sh
+./run.sh
 ```
+
+`run.sh` checks your Node version, installs server and client dependencies, creates `server/.env` and `client/.env.local` from the examples, starts both servers, and opens the app in your browser. Press `Ctrl+C` to stop everything.
 
 App runs at: **http://localhost:5173** (Backend: http://localhost:5001)
 
